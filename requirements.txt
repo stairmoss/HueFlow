@@ -1,0 +1,10 @@
+customtkinter>=5.2.0
+pillow>=10.0.0
+torch>=2.0.0
+torchvision
+transformers>=4.40.0
+accelerate>=0.29.0
+bitsandbytes>=0.43.0
+airllm>=2.14.0
+einops
+scipy
