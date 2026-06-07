@@ -5,6 +5,6 @@ torchvision
 transformers
 accelerate
 bitsandbytes
-airllm
+airllm==2.11.0
 einops
 scipy

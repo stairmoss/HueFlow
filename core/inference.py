@@ -10,7 +10,7 @@ except ImportError:
     AutoModel = None
 
 class ColorGraderInference:
-    def __init__(self, model_id="thauto/Moondream2"):
+    def __init__(self, model_id="vikhyatk/moondream2"):
         self.model_id = model_id
         self.model = None
         self.tokenizer = None
@@ -35,11 +35,16 @@ class ColorGraderInference:
         if self.model is None:
             try:
                 print("Attempting 4-bit transformers layer loading (bitsandbytes)...")
+                from transformers import BitsAndBytesConfig
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16
+                )
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_id, 
                     trust_remote_code=True,
                     device_map="auto",
-                    load_in_4bit=True
+                    quantization_config=quantization_config
                 )
                 print("Model loaded successfully in 4-bit mode.")
             except Exception as e:
