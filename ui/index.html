@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HueFlow AI Studio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .slider-track {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 9999px;
+      background: #1f2937;
+      outline: none;
+    }
+    .slider-track::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #a78bfa;
+      cursor: pointer;
+      transition: background 0.15s ease-in-out;
+    }
+    .slider-track::-webkit-slider-thumb:hover {
+      background: #c084fc;
+    }
+  </style>
+</head>
+<body class="text-gray-100 overflow-hidden flex flex-col h-screen">
+
+  <!-- Header -->
+  <header class="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between flex-shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-purple-500 via-pink-500 to-rose-400 flex items-center justify-center shadow-lg shadow-purple-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400">HueFlow AI</h1>
+        <p class="text-xs text-gray-400">Professional Hybrid Color Grading Studio</p>
+      </div>
+    </div>
+    
+    <div class="flex items-center space-x-3">
+      <button onclick="uploadImage()" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 text-gray-200 text-sm font-medium rounded-xl border border-gray-700 transition flex items-center space-x-2">
+        <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+        </svg>
+        <span>Upload Image</span>
+      </button>
+      <button id="btn-analyze" onclick="startAnalysis()" disabled class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-lg shadow-purple-600/15 transition flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+        </svg>
+        <span>Analyze with AI</span>
+      </button>
+      <button id="btn-export" onclick="exportLUT()" disabled class="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-lg shadow-rose-600/15 transition flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293h3.172a1 1 0 00.707-.293l2.414-2.414a1 1 0 01.707-.293H20"></path>
+        </svg>
+        <span>Export .CUBE</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 flex overflow-hidden">
+    
+    <!-- Left: Canvas/Preview -->
+    <div class="flex-1 bg-gray-950 p-6 flex flex-col justify-between items-center relative overflow-hidden">
+      <!-- Status Badge -->
+      <div class="absolute top-4 left-4 z-10">
+        <span id="status-badge" class="px-3 py-1.5 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-full text-xs font-semibold text-gray-400 flex items-center space-x-2">
+          <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" id="status-dot"></span>
+          <span id="status-text">Waiting for Image...</span>
+        </span>
+      </div>
+
+      <!-- Comparison Slider Workspace -->
+      <div class="flex-1 w-full flex items-center justify-center relative select-none">
+        <div id="image-container" class="relative max-w-full max-h-[500px] overflow-hidden rounded-2xl border border-gray-800 shadow-2xl hidden">
+          <!-- Graded Image -->
+          <img id="img-graded" class="max-h-[500px] object-contain w-full h-auto" src="" alt="Graded View">
+          <!-- Original Image (with clip-path) -->
+          <div id="img-original-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none" style="clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);">
+            <img id="img-original" class="max-h-[500px] object-contain w-full h-auto" src="" alt="Original View">
+          </div>
+          <!-- Split Divider Line -->
+          <div id="split-handle" class="absolute top-0 bottom-0 w-1 bg-white/80 cursor-ew-resize flex items-center justify-center group" style="left: 50%;">
+            <div class="w-8 h-8 rounded-full bg-white text-gray-900 shadow-xl border border-gray-200 flex items-center justify-center font-bold text-xs pointer-events-none select-none transition group-hover:scale-110">
+              ↔
+            </div>
+          </div>
+        </div>
+
+        <!-- Placeholder -->
+        <div id="image-placeholder" class="text-center p-8 border-2 border-dashed border-gray-800 rounded-2xl max-w-md">
+          <div class="w-16 h-16 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto mb-4 text-purple-400">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+          </div>
+          <h3 class="text-md font-semibold text-gray-355">No Active Project</h3>
+          <p class="text-xs text-gray-500 mt-2">Upload a photo to start adjusting Exposure, Contrast, HSL, Color Wheels, and local AI masks.</p>
+        </div>
+      </div>
+      
+      <!-- Quick Info Bar -->
+      <div class="w-full max-w-xl bg-gray-900/50 border border-gray-800/80 rounded-xl px-4 py-3 text-xs text-gray-400 flex items-center justify-between">
+        <span class="flex items-center space-x-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+          <span>Inference: Moondream2 4-Bit</span>
+        </span>
+        <span class="text-gray-500">Bakes live grading parameters directly into 3D LUTs</span>
+      </div>
+    </div>
+
+    <!-- Right: Sidebar Controls -->
+    <div class="w-[420px] bg-gray-900 border-l border-gray-800 flex flex-col h-full overflow-hidden">
+      <!-- Tabs Header -->
+      <div class="border-b border-gray-800 flex bg-gray-950 p-2 space-x-1 flex-shrink-0">
+        <button onclick="switchTab('adjustments')" id="tab-btn-adjustments" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition">
+          Sliders
+        </button>
+        <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition">
+          AI Analysis Log
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6" id="tab-adjustments">
+        
+        <!-- Section: Light -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-blue-400 mb-4 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-blue-500 rounded-full"></span>
+            <span>Light Parameters</span>
+          </h3>
+          <div class="space-y-4">
+            <!-- Exposure -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Exposure</span>
+                <span id="val-exposure" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="exposure" min="-3" max="3" step="0.05" value="0" oninput="updateSlider('exposure')" class="slider-track">
+            </div>
+            <!-- Contrast -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Contrast</span>
+                <span id="val-contrast" class="text-gray-400 font-mono">1.00</span>
+              </div>
+              <input type="range" id="contrast" min="0" max="4" step="0.05" value="1" oninput="updateSlider('contrast')" class="slider-track">
+            </div>
+            <!-- Highlights -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Highlights</span>
+                <span id="val-highlights" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="highlights" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('highlights')" class="slider-track">
+            </div>
+            <!-- Shadows -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Shadows</span>
+                <span id="val-shadows" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="shadows" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('shadows')" class="slider-track">
+            </div>
+            <!-- Whites -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Whites</span>
+                <span id="val-whites" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="whites" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('whites')" class="slider-track">
+            </div>
+            <!-- Blacks -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-350">Blacks</span>
+                <span id="val-blacks" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="blacks" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('blacks')" class="slider-track">
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-800">
+
+        <!-- Section: Color -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-4 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-emerald-500 rounded-full"></span>
+            <span>Color & White Balance</span>
+          </h3>
+          <div class="space-y-4">
+            <!-- Temp -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-355">Temperature</span>
+                <span id="val-temp" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="temp" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('temp')" class="slider-track">
+            </div>
+            <!-- Tint -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-355">Tint</span>
+                <span id="val-tint" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="tint" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('tint')" class="slider-track">
+            </div>
+            <!-- Vibrance -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-355">Vibrance</span>
+                <span id="val-vibrance" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="vibrance" min="-1" max="2" step="0.05" value="0" oninput="updateSlider('vibrance')" class="slider-track">
+            </div>
+            <!-- Saturation -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-gray-355">Saturation</span>
+                <span id="val-saturation" class="text-gray-400 font-mono">1.00</span>
+              </div>
+              <input type="range" id="saturation" min="0" max="4" step="0.05" value="1" oninput="updateSlider('saturation')" class="slider-track">
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-800">
+
+        <!-- Section: HSL Mixer -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-4 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-amber-500 rounded-full"></span>
+            <span>Color Mixer (HSL)</span>
+          </h3>
+          <div class="space-y-6">
+            <!-- HSL RED -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-rose-400 block mb-2.5">Red Channel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Hue</span>
+                    <span id="val-hsl_red_h" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_red_h" min="-0.5" max="0.5" step="0.05" value="0" oninput="updateSlider('hsl_red_h')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Saturation</span>
+                    <span id="val-hsl_red_s" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_red_s" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_red_s')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Luminance</span>
+                    <span id="val-hsl_red_l" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_red_l" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_red_l')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- HSL YELLOW -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-yellow-450 block mb-2.5">Yellow Channel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Hue</span>
+                    <span id="val-hsl_yellow_h" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_yellow_h" min="-0.5" max="0.5" step="0.05" value="0" oninput="updateSlider('hsl_yellow_h')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Saturation</span>
+                    <span id="val-hsl_yellow_s" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_yellow_s" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_yellow_s')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Luminance</span>
+                    <span id="val-hsl_yellow_l" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_yellow_l" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_yellow_l')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- HSL GREEN -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-emerald-400 block mb-2.5">Green Channel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Hue</span>
+                    <span id="val-hsl_green_h" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_green_h" min="-0.5" max="0.5" step="0.05" value="0" oninput="updateSlider('hsl_green_h')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Saturation</span>
+                    <span id="val-hsl_green_s" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_green_s" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_green_s')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Luminance</span>
+                    <span id="val-hsl_green_l" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_green_l" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_green_l')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- HSL BLUE -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-blue-400 block mb-2.5">Blue Channel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Hue</span>
+                    <span id="val-hsl_blue_h" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_blue_h" min="-0.5" max="0.5" step="0.05" value="0" oninput="updateSlider('hsl_blue_h')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Saturation</span>
+                    <span id="val-hsl_blue_s" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_blue_s" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_blue_s')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span class="text-gray-450">Luminance</span>
+                    <span id="val-hsl_blue_l" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="hsl_blue_l" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('hsl_blue_l')" class="slider-track">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-800">
+
+        <!-- Section: Cinematic Wheels -->
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-pink-400 mb-4 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-pink-500 rounded-full"></span>
+            <span>Cinematic Color Wheels</span>
+          </h3>
+          <div class="space-y-6">
+            <!-- Shadows Wheel -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-blue-450 block mb-2.5">Shadows Wheel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Hue</span>
+                    <span id="val-shadows_hue" class="text-gray-500 font-mono">0.0°</span>
+                  </div>
+                  <input type="range" id="shadows_hue" min="0" max="360" step="1" value="0" oninput="updateSlider('shadows_hue')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Saturation</span>
+                    <span id="val-shadows_sat" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="shadows_sat" min="0" max="0.5" step="0.01" value="0" oninput="updateSlider('shadows_sat')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- Midtones Wheel -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-amber-450 block mb-2.5">Midtones Wheel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Hue</span>
+                    <span id="val-midtones_hue" class="text-gray-500 font-mono">0.0°</span>
+                  </div>
+                  <input type="range" id="midtones_hue" min="0" max="360" step="1" value="0" oninput="updateSlider('midtones_hue')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Saturation</span>
+                    <span id="val-midtones_sat" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="midtones_sat" min="0" max="0.5" step="0.01" value="0" oninput="updateSlider('midtones_sat')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- Highlights Wheel -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80">
+              <span class="text-xs font-semibold text-rose-400 block mb-2.5">Highlights Wheel</span>
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Hue</span>
+                    <span id="val-highlights_hue" class="text-gray-500 font-mono">0.0°</span>
+                  </div>
+                  <input type="range" id="highlights_hue" min="0" max="360" step="1" value="0" oninput="updateSlider('highlights_hue')" class="slider-track">
+                </div>
+                <div>
+                  <div class="flex justify-between text-[11px] mb-1">
+                    <span>Saturation</span>
+                    <span id="val-highlights_sat" class="text-gray-500 font-mono">0.00</span>
+                  </div>
+                  <input type="range" id="highlights_sat" min="0" max="0.5" step="0.01" value="0" oninput="updateSlider('highlights_sat')" class="slider-track">
+                </div>
+              </div>
+            </div>
+
+            <!-- Blending & Balance -->
+            <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80 space-y-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span>Blending</span>
+                  <span id="val-grading_blending" class="text-gray-400 font-mono">0.50</span>
+                </div>
+                <input type="range" id="grading_blending" min="0.01" max="1" step="0.05" value="0.5" oninput="updateSlider('grading_blending')" class="slider-track">
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span>Balance</span>
+                  <span id="val-grading_balance" class="text-gray-400 font-mono">0.00</span>
+                </div>
+                <input type="range" id="grading_balance" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('grading_balance')" class="slider-track">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-800">
+
+        <!-- Section: Masking -->
+        <div class="pb-6">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-4 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-purple-500 rounded-full"></span>
+            <span>Masking (Local Grades)</span>
+          </h3>
+          <div class="space-y-4">
+            <!-- Mask Selection OptionMenu -->
+            <div>
+              <label class="block text-xs text-gray-400 mb-2">Mask Type Selection</label>
+              <select id="mask-select" onchange="changeMaskType()" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-200 outline-none focus:border-purple-500 transition">
+                <option value="None">None (Global Grade)</option>
+                <option value="Sky">AI Sky Select</option>
+                <option value="Subject">AI Subject Select</option>
+                <option value="Linear">Linear Gradient (Top-Down)</option>
+                <option value="Radial">Radial Gradient (Center Out)</option>
+              </select>
+            </div>
+            
+            <!-- Local Mask Exposure -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span>Mask Exposure</span>
+                <span id="val-mask_exposure" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="mask_exposure" min="-2" max="2" step="0.05" value="0" oninput="updateSlider('mask_exposure')" class="slider-track">
+            </div>
+
+            <!-- Local Mask Temp -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span>Mask Temperature</span>
+                <span id="val-mask_temp" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="mask_temp" min="-1" max="1" step="0.05" value="0" oninput="updateSlider('mask_temp')" class="slider-track">
+            </div>
+
+            <!-- Local Mask Vibrance -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span>Mask Vibrance</span>
+                <span id="val-mask_vibrance" class="text-gray-400 font-mono">0.00</span>
+              </div>
+              <input type="range" id="mask_vibrance" min="-1" max="2" step="0.05" value="0" oninput="updateSlider('mask_vibrance')" class="slider-track">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab: Logs -->
+      <div class="flex-1 overflow-hidden flex flex-col p-6 hidden" id="tab-logs">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-pink-400 mb-4 flex items-center space-x-2">
+          <span class="w-1 h-3.5 bg-pink-500 rounded-full"></span>
+          <span>AI Inference Stream</span>
+        </h3>
+        <div class="flex-1 bg-gray-950 border border-gray-800 rounded-xl p-4 font-mono text-xs text-green-400 overflow-y-auto custom-scrollbar flex flex-col space-y-2 select-text" id="log-output">
+          <span class="text-gray-500">[System] Studio is ready. Waiting for project launch...</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Javascript -->
+  <script>
+    let currentTab = 'adjustments';
+    let originalPath = '';
+    let gradedPath = '';
+    let isDraggingSplit = false;
+    let debouncer = null;
+
+    const sliderKeys = [
+      "exposure", "contrast", "highlights", "shadows", "whites", "blacks",
+      "temp", "tint", "vibrance", "saturation",
+      "shadows_hue", "shadows_sat", "midtones_hue", "midtones_sat", "highlights_hue", "highlights_sat",
+      "grading_blending", "grading_balance",
+      "hsl_red_h", "hsl_red_s", "hsl_red_l",
+      "hsl_yellow_h", "hsl_yellow_s", "hsl_yellow_l",
+      "hsl_green_h", "hsl_green_s", "hsl_green_l",
+      "hsl_blue_h", "hsl_blue_s", "hsl_blue_l",
+      "mask_exposure", "mask_temp", "mask_vibrance"
+    ];
+
+    function switchTab(tab) {
+      document.getElementById('tab-adjustments').classList.add('hidden');
+      document.getElementById('tab-logs').classList.add('hidden');
+      document.getElementById('tab-btn-adjustments').className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition';
+      document.getElementById('tab-btn-logs').className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition';
+      
+      if (tab === 'adjustments') {
+        document.getElementById('tab-adjustments').classList.remove('hidden');
+        document.getElementById('tab-btn-adjustments').className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition';
+      } else {
+        document.getElementById('tab-logs').classList.remove('hidden');
+        document.getElementById('tab-btn-logs').className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition';
+      }
+      currentTab = tab;
+    }
+
+    function addLog(text, colorClass = 'text-green-400') {
+      const logBox = document.getElementById('log-output');
+      const item = document.createElement('div');
+      item.className = `${colorClass} py-0.5 leading-relaxed`;
+      item.innerText = text;
+      logBox.appendChild(item);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    async function uploadImage() {
+      addLog("[Client] Launching native file manager to pick photo...");
+      try {
+        const res = await fetch('/api/upload');
+        const data = await res.json();
+        if (data.status === 'success') {
+          originalPath = data.original_path;
+          gradedPath = data.graded_path;
+          
+          document.getElementById('img-original').src = `/static/load?path=${encodeURIComponent(originalPath)}&t=${Date.now()}`;
+          document.getElementById('img-graded').src = `/static/load?path=${encodeURIComponent(gradedPath)}&t=${Date.now()}`;
+          
+          document.getElementById('image-placeholder').classList.add('hidden');
+          document.getElementById('image-container').classList.remove('hidden');
+          
+          // Enable buttons
+          document.getElementById('btn-analyze').disabled = false;
+          document.getElementById('btn-export').disabled = false;
+          
+          // Reset slider defaults
+          resetSlidersToDefaults();
+          
+          // Status badge
+          document.getElementById('status-dot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+          document.getElementById('status-text').innerText = 'Ready / Photo Loaded';
+          
+          addLog(`[System] Photo loaded successfully: ${originalPath}`);
+        } else {
+          addLog(`[Client] Upload canceled or failed: ${data.message || 'unknown error'}`, 'text-yellow-450');
+        }
+      } catch (err) {
+        addLog(`[System] Error uploading image: ${err}`, 'text-red-400');
+      }
+    }
+
+    function resetSlidersToDefaults() {
+      const defaults = {
+        exposure: 0, contrast: 1, highlights: 0, shadows: 0, whites: 0, blacks: 0,
+        temp: 0, tint: 0, vibrance: 0, saturation: 1,
+        shadows_hue: 0, shadows_sat: 0, midtones_hue: 0, midtones_sat: 0, highlights_hue: 0, highlights_sat: 0,
+        grading_blending: 0.5, grading_balance: 0,
+        hsl_red_h: 0, hsl_red_s: 0, hsl_red_l: 0,
+        hsl_yellow_h: 0, hsl_yellow_s: 0, hsl_yellow_l: 0,
+        hsl_green_h: 0, hsl_green_s: 0, hsl_green_l: 0,
+        hsl_blue_h: 0, hsl_blue_s: 0, hsl_blue_l: 0,
+        mask_exposure: 0, mask_temp: 0, mask_vibrance: 0
+      };
+      
+      for (const key of sliderKeys) {
+        const slider = document.getElementById(key);
+        if (slider) {
+          slider.value = defaults[key];
+          document.getElementById(`val-${key}`).innerText = Number(defaults[key]).toFixed(2) + (key.endsWith('hue') ? '°' : '');
+        }
+      }
+      document.getElementById('mask-select').value = "None";
+    }
+
+    function updateSlider(key) {
+      const val = parseFloat(document.getElementById(key).value);
+      document.getElementById(`val-${key}`).innerText = val.toFixed(2) + (key.endsWith('hue') ? '°' : '');
+      
+      // Debounce the preview grade updates
+      if (debouncer) clearTimeout(debouncer);
+      debouncer = setTimeout(triggerLiveGrade, 80);
+    }
+
+    function changeMaskType() {
+      if (debouncer) clearTimeout(debouncer);
+      triggerLiveGrade();
+    }
+
+    async function triggerLiveGrade() {
+      if (!originalPath) return;
+      
+      const adjustments = {};
+      for (const key of sliderKeys) {
+        adjustments[key] = parseFloat(document.getElementById(key).value);
+      }
+      adjustments["mask_type"] = document.getElementById('mask-select').value;
+      
+      try {
+        const res = await fetch('/api/grade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            original_path: originalPath,
+            graded_path: gradedPath,
+            adjustments: adjustments
+          })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          // Force refresh image preview
+          document.getElementById('img-graded').src = `/static/load?path=${encodeURIComponent(gradedPath)}&t=${Date.now()}`;
+        }
+      } catch (err) {
+        console.error("Live grade error: ", err);
+      }
+    }
+
+    async function startAnalysis() {
+      if (!originalPath) return;
+      
+      document.getElementById('btn-analyze').disabled = true;
+      document.getElementById('status-dot').className = 'w-2 h-2 rounded-full bg-purple-500 animate-pulse';
+      document.getElementById('status-text').innerText = 'Analyzing Image...';
+      
+      switchTab('logs');
+      addLog("[Model] Initializing VLM encoder... running layer-by-layer pass.");
+      addLog("[Model] Checking AirLLM sharding profile (6GB footprint limit enforced)...");
+      
+      try {
+        const res = await fetch(`/api/analyze?path=${encodeURIComponent(originalPath)}`);
+        const data = await res.json();
+        if (data.status === 'success') {
+          const adj = data.result.adjustments;
+          addLog("[Model] Complete! Received high-precision color values:");
+          addLog(JSON.stringify(data.result, null, 2));
+          
+          // Update all UI sliders
+          for (const key of sliderKeys) {
+            if (adj[key] !== undefined) {
+              const slider = document.getElementById(key);
+              if (slider) {
+                slider.value = adj[key];
+                document.getElementById(`val-${key}`).innerText = Number(adj[key]).toFixed(2) + (key.endsWith('hue') ? '°' : '');
+              }
+            }
+          }
+          if (adj.mask_type) {
+            document.getElementById('mask-select').value = adj.mask_type;
+          }
+          
+          // Refresh graded path
+          document.getElementById('img-graded').src = `/static/load?path=${encodeURIComponent(gradedPath)}&t=${Date.now()}`;
+          
+          document.getElementById('status-dot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+          document.getElementById('status-text').innerText = 'Analysis Complete';
+        } else {
+          addLog(`[Model] Inference failed: ${data.message || 'unknown error'}`, 'text-red-400');
+        }
+      } catch (err) {
+        addLog(`[System] Error analyzing: ${err}`, 'text-red-400');
+      } finally {
+        document.getElementById('btn-analyze').disabled = false;
+      }
+    }
+
+    async function exportLUT() {
+      if (!originalPath) return;
+      
+      addLog("[Client] Opening file picker to save 3D LUT (.CUBE)...");
+      
+      const adjustments = {};
+      for (const key of sliderKeys) {
+        adjustments[key] = parseFloat(document.getElementById(key).value);
+      }
+      adjustments["mask_type"] = document.getElementById('mask-select').value;
+
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adjustments: adjustments })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          addLog(`[System] Saved 3D LUT successfully: ${data.path}`, 'text-emerald-400');
+          alert(`3D LUT successfully exported to:\n${data.path}`);
+        } else {
+          addLog(`[System] Export canceled or failed: ${data.message || 'unknown'}`, 'text-yellow-450');
+        }
+      } catch (err) {
+        addLog(`[System] Error exporting LUT: ${err}`, 'text-red-400');
+      }
+    }
+
+    // Interactive before/after split screen
+    const splitHandle = document.getElementById('split-handle');
+    const container = document.getElementById('image-container');
+    const originalWrapper = document.getElementById('img-original-wrapper');
+
+    function updateSplitPosition(pct) {
+      pct = Math.max(0, Math.min(100, pct));
+      splitHandle.style.left = `${pct}%`;
+      originalWrapper.style.clipPath = `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`;
+    }
+
+    splitHandle.addEventListener('mousedown', (e) => {
+      isDraggingSplit = true;
+      e.preventDefault();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDraggingSplit = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDraggingSplit) return;
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = (x / rect.width) * 100;
+      updateSplitPosition(pct);
+    });
+
+    // Touch support for mobile/tablets
+    splitHandle.addEventListener('touchstart', (e) => {
+      isDraggingSplit = true;
+    });
+    window.addEventListener('touchend', () => {
+      isDraggingSplit = false;
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (!isDraggingSplit) return;
+      const rect = container.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left;
+      const pct = (x / rect.width) * 100;
+      updateSplitPosition(pct);
+    });
+  </script>
+</body>
+</html>

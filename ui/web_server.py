@@ -1,0 +1,264 @@
+import os
+import json
+import urllib.parse
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
+import queue
+
+# Global references
+_SERVER_RUNNER = None
+
+class WebServerRunner:
+    def __init__(self, main_window):
+        global _SERVER_RUNNER
+        self.main_window = main_window
+        self.cmd_queue = queue.Queue()
+        self.server = None
+        self.port = 5000
+        _SERVER_RUNNER = self
+
+    def start(self):
+        def run_server():
+            handler = HueFlowHTTPHandler
+            # Try ports in case 5000 is occupied
+            for p in range(5000, 5020):
+                try:
+                    self.port = p
+                    self.server = HTTPServer(('127.0.0.1', self.port), handler)
+                    print(f"HueFlow Web Server running on http://127.0.0.1:{self.port}")
+                    self.server.serve_forever()
+                    break
+                except Exception as e:
+                    print(f"Port {p} failed: {e}")
+                    
+        t = threading.Thread(target=run_server, daemon=True)
+        t.start()
+
+    def run_on_main_thread(self, fn):
+        """Runs a function on the main thread and returns the result using a blocking queue."""
+        res_queue = queue.Queue()
+        self.cmd_queue.put((fn, lambda res: res_queue.put(res)))
+        return res_queue.get()
+
+
+class HueFlowHTTPHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        # Silence standard HTTP logs to keep output clean
+        return
+
+    def do_GET(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
+
+        # Serve index.html
+        if path == "/" or path == "/index.html":
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            try:
+                html_path = os.path.join(os.path.dirname(__file__), "index.html")
+                with open(html_path, "r", encoding="utf-8") as f:
+                    self.wfile.write(f.read().encode("utf-8"))
+            except Exception as e:
+                self.wfile.write(f"Error loading index.html: {e}".encode("utf-8"))
+            return
+
+        # Safe local image loader API (bypasses browser file:// protocol restrictions)
+        elif path == "/static/load":
+            image_path = query.get("path", [""])[0]
+            if not image_path or not os.path.exists(image_path):
+                self.send_response(404)
+                self.end_headers()
+                return
+
+            self.send_response(200)
+            # Send proper content type
+            if image_path.lower().endswith(".png"):
+                self.send_header("Content-Type", "image/png")
+            elif image_path.lower().endswith((".jpg", ".jpeg")):
+                self.send_header("Content-Type", "image/jpeg")
+            else:
+                self.send_header("Content-Type", "image/octet-stream")
+            self.end_headers()
+
+            try:
+                with open(image_path, "rb") as f:
+                    self.wfile.write(f.read())
+            except Exception as e:
+                print(f"Error loading image static asset: {e}")
+            return
+
+        # Trigger native file selection dialog from backend
+        elif path == "/api/upload":
+            runner = _SERVER_RUNNER
+            
+            # Select image on main thread
+            file_path = runner.run_on_main_thread(runner.main_window._pick_image_path)
+            
+            if file_path:
+                base, _ext = os.path.splitext(file_path)
+                graded_path = base + "_graded.png"
+                
+                # Make a graded copy for previewing
+                runner.main_window.current_image_path = file_path
+                runner.main_window.current_graded_image_path = graded_path
+                
+                # Copy original to graded for start state
+                try:
+                    from PIL import Image
+                    img = Image.open(file_path)
+                    img.save(graded_path)
+                except Exception as e:
+                    print(f"Failed to create start graded image: {e}")
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "original_path": file_path,
+                    "graded_path": graded_path
+                }).encode("utf-8"))
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "cancel",
+                    "message": "User canceled file selection"
+                }).encode("utf-8"))
+            return
+
+        # Run AI analysis
+        elif path == "/api/analyze":
+            runner = _SERVER_RUNNER
+            image_path = query.get("path", [""])[0]
+            
+            if not image_path or not os.path.exists(image_path):
+                self.send_response(400)
+                self.end_headers()
+                return
+
+            if runner.main_window.ai_engine is None:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "error",
+                    "message": "AI Engine is still loading"
+                }).encode("utf-8"))
+                return
+
+            try:
+                # Trigger analysis
+                result = runner.main_window.ai_engine.analyze_image(image_path)
+                runner.main_window.current_adjustments = result.get("adjustments", {})
+                
+                # Generate graded image preview
+                from utils.image_grade import apply_adjustments_to_image
+                base, _ext = os.path.splitext(image_path)
+                graded_path = base + "_graded.png"
+                
+                apply_adjustments_to_image(image_path, runner.main_window.current_adjustments, graded_path)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "result": result
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "error",
+                    "message": str(e)
+                }).encode("utf-8"))
+            return
+
+        self.send_response(404)
+        self.end_headers()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode('utf-8')
+        
+        try:
+            params = json.loads(body)
+        except Exception:
+            params = {}
+
+        # Apply slider adjustments
+        if path == "/api/grade":
+            original_path = params.get("original_path")
+            graded_path = params.get("graded_path")
+            adjustments = params.get("adjustments", {})
+
+            if not original_path or not graded_path:
+                self.send_response(400)
+                self.end_headers()
+                return
+
+            try:
+                from utils.image_grade import apply_adjustments_to_image
+                apply_adjustments_to_image(original_path, adjustments, graded_path)
+                
+                # Update main window internal adjustments state
+                _SERVER_RUNNER.main_window.current_adjustments = adjustments
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                print(f"Error grading image in server: {e}")
+            return
+
+        # Export LUT
+        elif path == "/api/export":
+            adjustments = params.get("adjustments", {})
+            runner = _SERVER_RUNNER
+            
+            # Select LUT save path on main thread
+            lut_path = runner.run_on_main_thread(runner.main_window._pick_lut_save_path)
+            
+            if lut_path:
+                try:
+                    from utils.lut_gen import generate_cube_lut
+                    generate_cube_lut(adjustments, lut_path)
+                    
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "status": "success",
+                        "path": lut_path
+                    }).encode("utf-8"))
+                except Exception as e:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "status": "error",
+                        "message": str(e)
+                    }).encode("utf-8"))
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "cancel",
+                    "message": "User canceled save path selection"
+                }).encode("utf-8"))
+            return
+
+        self.send_response(404)
+        self.end_headers()
