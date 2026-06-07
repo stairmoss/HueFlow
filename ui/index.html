@@ -697,8 +697,12 @@
         const data = await res.json();
         if (data.status === 'success') {
           const adj = data.result.adjustments;
-          addLog("[Model] Complete! Received high-precision color values:");
-          addLog(JSON.stringify(data.result, null, 2));
+          const thought = data.result.thought || "Aesthetics evaluated successfully.";
+          
+          addLog("[Aesthetic Decisions & Reasoning]", "text-pink-400 font-bold mt-2");
+          addLog(thought, "text-gray-200 italic mb-2");
+          addLog("[Model Adjustments Calculated]", "text-purple-400 font-bold");
+          addLog(JSON.stringify(adj, null, 2));
           
           // Update all UI sliders
           for (const key of sliderKeys) {

@@ -61,16 +61,22 @@ class ColorGraderInference:
             print("Using mock analysis (model not loaded).")
             return self._mock_analysis()
 
-        # Prompt instruction
+        # Prompt instruction using Chain of Thought prompt engineering
         prompt = (
-            "Analyze the color profile of this image and output a JSON object with: "
-            "exposure (float), contrast (float), highlights (float), shadows (float), whites (float), blacks (float), "
-            "temp (float), tint (float), vibrance (float), saturation (float), "
-            "shadows_hue (float), shadows_sat (float), midtones_hue (float), midtones_sat (float), highlights_hue (float), highlights_sat (float), "
+            "Analyze the aesthetic quality, colors, and lighting of this image. "
+            "First, make a series of creative decisions to improve it (e.g. adjust lighting contrast, establish a cinematic color scheme like warm/cool or orange/teal, decide if sky or subject masking is useful). "
+            "Then, translate these decisions into color grading values. "
+            "Output a single JSON object containing two fields: "
+            "1. 'thought': a string describing your aesthetic decisions and reasoning (1-2 sentences). "
+            "2. 'adjustments': an object containing: "
+            "exposure (float between -2.0 and 2.0), contrast (float between 0.5 and 2.0), highlights (float between -1.0 and 1.0), shadows (float between -1.0 and 1.0), whites (float between -1.0 and 1.0), blacks (float between -1.0 and 1.0), "
+            "temp (float between -1.0 and 1.0), tint (float between -1.0 and 1.0), vibrance (float between -1.0 and 2.0), saturation (float between 0.0 and 2.0), "
+            "shadows_hue (float between 0.0 and 360.0), shadows_sat (float between 0.0 and 0.5), midtones_hue (float between 0.0 and 360.0), midtones_sat (float between 0.0 and 0.5), highlights_hue (float between 0.0 and 360.0), highlights_sat (float between 0.0 and 0.5), "
+            "grading_blending (float between 0.0 and 1.0), grading_balance (float between -1.0 and 1.0), "
             "hsl_red_h (float), hsl_red_s (float), hsl_red_l (float), hsl_yellow_h (float), hsl_yellow_s (float), hsl_yellow_l (float), "
             "hsl_green_h (float), hsl_green_s (float), hsl_green_l (float), hsl_blue_h (float), hsl_blue_s (float), hsl_blue_l (float), "
             "mask_type (string: 'None' or 'Sky' or 'Subject'), mask_exposure (float), mask_temp (float), mask_vibrance (float), and rgb_gain (list of 3 floats: [R, G, B]). "
-            "Output ONLY valid JSON like: {\"adjustments\": {\"exposure\": 0.1, \"contrast\": 1.1, \"highlights\": -0.05, \"shadows\": 0.1, \"whites\": 0.0, \"blacks\": -0.02, \"temp\": 0.05, \"tint\": -0.02, \"vibrance\": 0.15, \"saturation\": 1.2, \"shadows_hue\": 210.0, \"shadows_sat\": 0.05, \"midtones_hue\": 35.0, \"midtones_sat\": 0.02, \"highlights_hue\": 55.0, \"highlights_sat\": 0.03, \"hsl_red_h\": 0.0, \"hsl_red_s\": 0.05, \"hsl_red_l\": 0.0, \"hsl_yellow_h\": 0.0, \"hsl_yellow_s\": -0.02, \"hsl_yellow_l\": 0.0, \"hsl_green_h\": 0.0, \"hsl_green_s\": 0.02, \"hsl_green_l\": 0.0, \"hsl_blue_h\": 0.0, \"hsl_blue_s\": -0.03, \"hsl_blue_l\": 0.0, \"mask_type\": \"None\", \"mask_exposure\": 0.0, \"mask_temp\": 0.0, \"mask_vibrance\": 0.0, \"rgb_gain\": [1.05, 1.0, 0.95]}}"
+            "Output ONLY a valid JSON object starting with { and ending with } without markdown wrapping or backticks."
         )
         
         try:
@@ -90,7 +96,7 @@ class ColorGraderInference:
             else:
                 # Standard generation fallback if AirLLM wrappers changed the interface
                 print("Custom vision encoder not found. Attempting raw string return.")
-                response = '{"adjustments": {"exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0, "temp": 0.0, "tint": 0.0, "vibrance": 0.0, "saturation": 1.0, "shadows_hue": 0.0, "shadows_sat": 0.0, "midtones_hue": 0.0, "midtones_sat": 0.0, "highlights_hue": 0.0, "highlights_sat": 0.0, "hsl_red_h": 0.0, "hsl_red_s": 0.0, "hsl_red_l": 0.0, "hsl_yellow_h": 0.0, "hsl_yellow_s": 0.0, "hsl_yellow_l": 0.0, "hsl_green_h": 0.0, "hsl_green_s": 0.0, "hsl_green_l": 0.0, "hsl_blue_h": 0.0, "hsl_blue_s": 0.0, "hsl_blue_l": 0.0, "mask_type": "None", "mask_exposure": 0.0, "mask_temp": 0.0, "mask_vibrance": 0.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
+                response = '{"thought": "Failed to analyze dynamically.", "adjustments": {"exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0, "temp": 0.0, "tint": 0.0, "vibrance": 0.0, "saturation": 1.0, "shadows_hue": 0.0, "shadows_sat": 0.0, "midtones_hue": 0.0, "midtones_sat": 0.0, "highlights_hue": 0.0, "highlights_sat": 0.0, "hsl_red_h": 0.0, "hsl_red_s": 0.0, "hsl_red_l": 0.0, "hsl_yellow_h": 0.0, "hsl_yellow_s": 0.0, "hsl_yellow_l": 0.0, "hsl_green_h": 0.0, "hsl_green_s": 0.0, "hsl_green_l": 0.0, "hsl_blue_h": 0.0, "hsl_blue_s": 0.0, "hsl_blue_l": 0.0, "mask_type": "None", "mask_exposure": 0.0, "mask_temp": 0.0, "mask_vibrance": 0.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
                 
             print(f"Model Output: {response}")
             
@@ -109,8 +115,9 @@ class ColorGraderInference:
             return self._mock_analysis()
 
     def _mock_analysis(self):
-        # A mock output formatted as requested
+        # A mock output formatted with chain of thought reasoning
         return {
+            "thought": "The image has flat contrast with cool lighting. I decided to introduce cinematic warmth by shifting highlights towards orange and cooling down the shadows, boosting contrast slightly to make details pop.",
             "adjustments": {
                 "exposure": 0.05,
                 "contrast": 1.15,
