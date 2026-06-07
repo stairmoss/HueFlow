@@ -63,9 +63,10 @@ class ColorGraderInference:
 
         # Prompt instruction
         prompt = (
-            "Analyze the color profile of this image and output a JSON object with "
-            "brightness (float), contrast (float), saturation (float), and rgb_gain (list of 3 floats: [R, G, B]). "
-            "Output ONLY valid JSON like: {\"adjustments\": {\"brightness\": 0.05, \"contrast\": 1.15, \"saturation\": 1.3, \"rgb_gain\": [1.1, 1.0, 0.9]}}"
+            "Analyze the color profile of this image and output a JSON object with: "
+            "exposure (float), contrast (float), highlights (float), shadows (float), "
+            "whites (float), blacks (float), saturation (float), and rgb_gain (list of 3 floats: [R, G, B]). "
+            "Output ONLY valid JSON like: {\"adjustments\": {\"exposure\": 0.1, \"contrast\": 1.1, \"highlights\": -0.05, \"shadows\": 0.1, \"whites\": 0.0, \"blacks\": -0.02, \"saturation\": 1.2, \"rgb_gain\": [1.05, 1.0, 0.95]}}"
         )
         
         try:
@@ -85,7 +86,7 @@ class ColorGraderInference:
             else:
                 # Standard generation fallback if AirLLM wrappers changed the interface
                 print("Custom vision encoder not found. Attempting raw string return.")
-                response = '{"adjustments": {"brightness": 0.0, "contrast": 1.0, "saturation": 1.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
+                response = '{"adjustments": {"exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0, "saturation": 1.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
                 
             print(f"Model Output: {response}")
             
@@ -107,8 +108,12 @@ class ColorGraderInference:
         # A mock output formatted as requested
         return {
             "adjustments": {
-                "brightness": 0.05,
+                "exposure": 0.05,
                 "contrast": 1.15,
+                "highlights": -0.05,
+                "shadows": 0.1,
+                "whites": 0.0,
+                "blacks": -0.02,
                 "saturation": 1.3,
                 "rgb_gain": [1.1, 1.0, 0.9]
             }
