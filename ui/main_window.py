@@ -33,11 +33,18 @@ except Exception:
 # Import the core engine and web server
 from core.inference import ColorGraderInference
 from ui.web_server import WebServerRunner
+import ui.web_server
 
 
 class MainWindow(ctk.CTk):
-    def __init__(self):
+    def __init__(self, server_runner, manager):
         super().__init__()
+        
+        self.server_runner = server_runner
+        self.manager = manager
+        
+        # Bind server runner window reference to this Tkinter instance for main thread polling
+        self.server_runner.main_window = self
         
         self.title("HueFlow AI Server Manager")
         self.geometry("520x340")
@@ -52,19 +59,15 @@ class MainWindow(ctk.CTk):
         self.current_graded_image_path = None
         self.current_adjustments = {}
 
-        # Set up Web Server Runner
-        self.server_runner = WebServerRunner(self)
-        self.server_runner.start()
-        
         self._setup_ui()
         
         # Start queue checker for thread safety
         self.after(100, self.check_queue)
         
-        # Load AI engine in background
-        threading.Thread(target=self._init_ai_engine, daemon=True).start()
+        # Check engine load status
+        self.after(200, self._check_engine_loaded)
         
-        # Auto-open browser after 1 second
+        # Auto-open browser
         self.after(1000, self.open_browser)
 
     def check_queue(self):
@@ -185,12 +188,12 @@ class MainWindow(ctk.CTk):
         )
         self.btn_open.pack(pady=(5, 10), ipadx=10, ipady=5)
 
-    def _init_ai_engine(self):
-        try:
-            self.ai_engine = ColorGraderInference()
+    def _check_engine_loaded(self):
+        if self.manager.ai_engine is not None:
+            self.ai_engine = self.manager.ai_engine
             self._update_status("Server Status: AI Engine Ready", "#10b981")
-        except Exception as e:
-            self._update_status(f"Server Load Error: {e}", "#ef4444")
+        else:
+            self.after(500, self._check_engine_loaded)
 
     def _update_status(self, text, color):
         def _update():
@@ -273,6 +276,55 @@ class MainWindow(ctk.CTk):
         ) or None
 
 
-if __name__ == "__main__":
-    app = MainWindow()
-    app.mainloop()
+class ServerManager:
+    def __init__(self):
+        self.ai_engine = None
+        self.current_image_path = None
+        self.current_graded_image_path = None
+        self.current_adjustments = {}
+
+
+def launch_app():
+    print("Starting HueFlow Color Science Server...")
+    
+    # 1. Instantiate shared manager to hold states
+    manager = ServerManager()
+    
+    # 2. Start Python background Web Server
+    runner = WebServerRunner(manager)
+    runner.start()
+    
+    # 3. Load VLM inference model in background thread
+    def load_engine():
+        try:
+            print("Loading model. Please wait...")
+            manager.ai_engine = ColorGraderInference()
+            print("AI Engine successfully initialized!")
+        except Exception as e:
+            print(f"Error loading AI Engine: {e}")
+            
+    threading.Thread(target=load_engine, daemon=True).start()
+    
+    # 4. Attempt native pywebview frame launch
+    url = f"http://127.0.0.1:{runner.port}"
+    try:
+        import webview
+        print("Initializing native desktop webview window...")
+        window = webview.create_window(
+            "HueFlow AI Studio", 
+            url, 
+            width=1200, 
+            height=800, 
+            min_size=(1000, 650)
+        )
+        ui.web_server._WEBVIEW_WINDOW = window
+        webview.start()
+        print("Studio window closed. Shutting down server.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Native webview unavailable: {e}")
+        print("Falling back to server control manager + web browser...")
+        
+        # Start GUI launcher fallback loop
+        app = MainWindow(runner, manager)
+        app.mainloop()

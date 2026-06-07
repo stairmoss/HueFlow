@@ -7,6 +7,7 @@ import queue
 
 # Global references
 _SERVER_RUNNER = None
+_WEBVIEW_WINDOW = None
 
 class WebServerRunner:
     def __init__(self, main_window):
@@ -43,7 +44,6 @@ class WebServerRunner:
 
 class HueFlowHTTPHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        # Silence standard HTTP logs to keep output clean
         return
 
     def do_GET(self):
@@ -51,7 +51,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
         path = parsed.path
         query = urllib.parse.parse_qs(parsed.query)
 
-        # Serve index.html
         if path == "/" or path == "/index.html":
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -64,7 +63,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 self.wfile.write(f"Error loading index.html: {e}".encode("utf-8"))
             return
 
-        # Safe local image loader API (bypasses browser file:// protocol restrictions)
         elif path == "/static/load":
             image_path = query.get("path", [""])[0]
             if not image_path or not os.path.exists(image_path):
@@ -73,7 +71,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 return
 
             self.send_response(200)
-            # Send proper content type
             if image_path.lower().endswith(".png"):
                 self.send_header("Content-Type", "image/png")
             elif image_path.lower().endswith((".jpg", ".jpeg")):
@@ -89,22 +86,31 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 print(f"Error loading image static asset: {e}")
             return
 
-        # Trigger native file selection dialog from backend
         elif path == "/api/upload":
             runner = _SERVER_RUNNER
+            global _WEBVIEW_WINDOW
             
-            # Select image on main thread
-            file_path = runner.run_on_main_thread(runner.main_window._pick_image_path)
+            if _WEBVIEW_WINDOW is not None:
+                try:
+                    import webview
+                    res = _WEBVIEW_WINDOW.create_file_dialog(
+                        webview.OPEN_DIALOG, 
+                        file_types=('Image Files (*.jpg;*.jpeg;*.png;*.webp)',)
+                    )
+                    file_path = res[0] if res else None
+                except Exception as e:
+                    print(f"Webview dialog error: {e}")
+                    file_path = None
+            else:
+                file_path = runner.run_on_main_thread(runner.main_window._pick_image_path)
             
             if file_path:
                 base, _ext = os.path.splitext(file_path)
                 graded_path = base + "_graded.png"
                 
-                # Make a graded copy for previewing
                 runner.main_window.current_image_path = file_path
                 runner.main_window.current_graded_image_path = graded_path
                 
-                # Copy original to graded for start state
                 try:
                     from PIL import Image
                     img = Image.open(file_path)
@@ -130,7 +136,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 }).encode("utf-8"))
             return
 
-        # Run AI analysis
         elif path == "/api/analyze":
             runner = _SERVER_RUNNER
             image_path = query.get("path", [""])[0]
@@ -151,11 +156,9 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 return
 
             try:
-                # Trigger analysis
                 result = runner.main_window.ai_engine.analyze_image(image_path)
                 runner.main_window.current_adjustments = result.get("adjustments", {})
                 
-                # Generate graded image preview
                 from utils.image_grade import apply_adjustments_to_image
                 base, _ext = os.path.splitext(image_path)
                 graded_path = base + "_graded.png"
@@ -194,7 +197,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
         except Exception:
             params = {}
 
-        # Apply slider adjustments
         if path == "/api/grade":
             original_path = params.get("original_path")
             graded_path = params.get("graded_path")
@@ -209,7 +211,6 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 from utils.image_grade import apply_adjustments_to_image
                 apply_adjustments_to_image(original_path, adjustments, graded_path)
                 
-                # Update main window internal adjustments state
                 _SERVER_RUNNER.main_window.current_adjustments = adjustments
                 
                 self.send_response(200)
@@ -222,13 +223,25 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 print(f"Error grading image in server: {e}")
             return
 
-        # Export LUT
         elif path == "/api/export":
             adjustments = params.get("adjustments", {})
             runner = _SERVER_RUNNER
+            global _WEBVIEW_WINDOW
             
-            # Select LUT save path on main thread
-            lut_path = runner.run_on_main_thread(runner.main_window._pick_lut_save_path)
+            if _WEBVIEW_WINDOW is not None:
+                try:
+                    import webview
+                    res = _WEBVIEW_WINDOW.create_file_dialog(
+                        webview.SAVE_DIALOG, 
+                        save_filename='HueFlow_Grade.cube', 
+                        file_types=('CUBE files (*.cube)',)
+                    )
+                    lut_path = res if res else None
+                except Exception as e:
+                    print(f"Webview save dialog error: {e}")
+                    lut_path = None
+            else:
+                lut_path = runner.run_on_main_thread(runner.main_window._pick_lut_save_path)
             
             if lut_path:
                 try:
