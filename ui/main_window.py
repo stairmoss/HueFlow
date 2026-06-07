@@ -333,6 +333,9 @@ class MainWindow(ctk.CTk):
     def start_analysis(self):
         if not self.current_image_path:
             return
+        if self.ai_engine is None:
+            self.log("AI Engine is still loading. Please wait...")
+            return
             
         self.btn_analyze.configure(state="disabled")
         self.btn_upload.configure(state="disabled")

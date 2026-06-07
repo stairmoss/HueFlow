@@ -73,7 +73,13 @@ class ColorGraderInference:
             image = Image.open(image_path)
             
             # Try Moondream's native vision methods
-            if hasattr(self.model, "encode_image") and hasattr(self.model, "answer_question"):
+            if hasattr(self.model, "query"):
+                query_result = self.model.query(image, prompt)
+                if isinstance(query_result, dict) and "answer" in query_result:
+                    response = query_result["answer"]
+                else:
+                    response = str(query_result)
+            elif hasattr(self.model, "encode_image") and hasattr(self.model, "answer_question"):
                 enc_image = self.model.encode_image(image)
                 response = self.model.answer_question(enc_image, prompt, self.tokenizer)
             else:
