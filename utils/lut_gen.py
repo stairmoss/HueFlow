@@ -5,9 +5,8 @@ def generate_cube_lut(adjustments: dict, output_path: str):
     """
     Generate a 33x33x33 3D LUT (.cube) based on AI adjustments.
     
-    Formula:
-    NewColor = (OriginalColor * Gain) * Contrast + Brightness
-    Saturation is applied in HSV space.
+    Formula handles Exposure, Contrast, Highlights, Shadows, Whites, Blacks, 
+    Temperature, Tint, Vibrance, Saturation, and RGB Gain.
     """
     size = 33
     
@@ -21,7 +20,12 @@ def generate_cube_lut(adjustments: dict, output_path: str):
     shadows = adjustments.get("shadows", 0.0)
     whites = adjustments.get("whites", 0.0)
     blacks = adjustments.get("blacks", 0.0)
+    
+    temp = adjustments.get("temp", 0.0)
+    tint = adjustments.get("tint", 0.0)
+    vibrance = adjustments.get("vibrance", 0.0)
     saturation = adjustments.get("saturation", 1.0)
+    
     rgb_gain = adjustments.get("rgb_gain", [1.0, 1.0, 1.0])
 
     print(f"Generating professional 3D LUT with size {size}x{size}x{size}...")
@@ -29,7 +33,7 @@ def generate_cube_lut(adjustments: dict, output_path: str):
     exp_factor = 2.0 ** exposure
 
     with open(output_path, 'w') as f:
-        # Write Header Generation (Phase 3)
+        # Write Header Generation
         f.write("TITLE \"HueFlow AI Grade\"\n")
         f.write(f"LUT_3D_SIZE {size}\n\n")
         
@@ -48,6 +52,16 @@ def generate_cube_lut(adjustments: dict, output_path: str):
                     r_new = r_norm * rgb_gain[0]
                     g_new = g_norm * rgb_gain[1]
                     b_new = b_norm * rgb_gain[2]
+                    
+                    # Apply Temperature and Tint
+                    # Temp: Warm (>0) shifts red up, blue down; Cool (<0) shifts red down, blue up
+                    r_new = r_new * (1.0 + temp * 0.15)
+                    b_new = b_new * (1.0 - temp * 0.15)
+                    
+                    # Tint: Green (<0) shifts green up, red/blue down; Magenta (>0) shifts green down, red/blue up
+                    g_new = g_new * (1.0 - tint * 0.15)
+                    r_new = r_new * (1.0 + tint * 0.075)
+                    b_new = b_new * (1.0 + tint * 0.075)
                     
                     # Apply Exposure (multiplicative scaling)
                     r_new *= exp_factor
@@ -89,6 +103,17 @@ def generate_cube_lut(adjustments: dict, output_path: str):
                     g_new += blacks * ((1.0 - g_new) ** 2)
                     b_new += blacks * ((1.0 - b_new) ** 2)
                     
+                    # Apply Vibrance
+                    if vibrance != 0.0:
+                        max_val = max(r_new, g_new, b_new)
+                        min_val = min(r_new, g_new, b_new)
+                        sat = (max_val - min_val) / (max_val + 1e-5)
+                        boost = vibrance * (1.0 - sat)
+                        mean_val = (r_new + g_new + b_new) / 3.0
+                        r_new = r_new + (r_new - mean_val) * boost
+                        g_new = g_new + (g_new - mean_val) * boost
+                        b_new = b_new + (b_new - mean_val) * boost
+                    
                     # Clamp RGB to [0.0, 1.0] before HSV conversion
                     r_new = max(0.0, min(1.0, r_new))
                     g_new = max(0.0, min(1.0, g_new))
@@ -122,6 +147,9 @@ if __name__ == "__main__":
         "shadows": 0.2,
         "whites": 0.05,
         "blacks": -0.02,
+        "temp": 0.1,
+        "tint": -0.05,
+        "vibrance": 0.3,
         "saturation": 1.5,
         "rgb_gain": [1.0, 0.9, 1.1]
     }

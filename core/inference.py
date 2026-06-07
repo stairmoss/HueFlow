@@ -65,8 +65,9 @@ class ColorGraderInference:
         prompt = (
             "Analyze the color profile of this image and output a JSON object with: "
             "exposure (float), contrast (float), highlights (float), shadows (float), "
-            "whites (float), blacks (float), saturation (float), and rgb_gain (list of 3 floats: [R, G, B]). "
-            "Output ONLY valid JSON like: {\"adjustments\": {\"exposure\": 0.1, \"contrast\": 1.1, \"highlights\": -0.05, \"shadows\": 0.1, \"whites\": 0.0, \"blacks\": -0.02, \"saturation\": 1.2, \"rgb_gain\": [1.05, 1.0, 0.95]}}"
+            "whites (float), blacks (float), temp (float), tint (float), vibrance (float), "
+            "saturation (float), and rgb_gain (list of 3 floats: [R, G, B]). "
+            "Output ONLY valid JSON like: {\"adjustments\": {\"exposure\": 0.1, \"contrast\": 1.1, \"highlights\": -0.05, \"shadows\": 0.1, \"whites\": 0.0, \"blacks\": -0.02, \"temp\": 0.05, \"tint\": -0.02, \"vibrance\": 0.15, \"saturation\": 1.2, \"rgb_gain\": [1.05, 1.0, 0.95]}}"
         )
         
         try:
@@ -86,7 +87,7 @@ class ColorGraderInference:
             else:
                 # Standard generation fallback if AirLLM wrappers changed the interface
                 print("Custom vision encoder not found. Attempting raw string return.")
-                response = '{"adjustments": {"exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0, "saturation": 1.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
+                response = '{"adjustments": {"exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0, "temp": 0.0, "tint": 0.0, "vibrance": 0.0, "saturation": 1.0, "rgb_gain": [1.0, 1.0, 1.0]}}'
                 
             print(f"Model Output: {response}")
             
@@ -114,6 +115,9 @@ class ColorGraderInference:
                 "shadows": 0.1,
                 "whites": 0.0,
                 "blacks": -0.02,
+                "temp": 0.05,
+                "tint": -0.02,
+                "vibrance": 0.15,
                 "saturation": 1.3,
                 "rgb_gain": [1.1, 1.0, 0.9]
             }
