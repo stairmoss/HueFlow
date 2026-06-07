@@ -24,6 +24,7 @@ except Exception:
         CTkLabel = tk.Label
         CTkButton = tk.Button
         CTkTextbox = tk.Text
+        CTkScrollableFrame = tk.Frame  # Fall back to frame in minimal mode
 
         @staticmethod
         def set_appearance_mode(_mode: str):
@@ -61,8 +62,8 @@ class MainWindow(ctk.CTk):
         super().__init__()
         
         self.title("HueFlow AI")
-        self.geometry("1000x700")
-        self.minsize(900, 600)
+        self.geometry("1100x750")
+        self.minsize(1000, 650)
         
         # Initialize core engine variables
         self.ai_engine = None
@@ -73,36 +74,69 @@ class MainWindow(ctk.CTk):
         
         # Define ranges: (min, max, default)
         self.slider_ranges = {
+            # 1. Light Panel
             "exposure": (-3.0, 3.0, 0.0),
             "contrast": (0.0, 4.0, 1.0),
             "highlights": (-1.0, 1.0, 0.0),
             "shadows": (-1.0, 1.0, 0.0),
             "whites": (-1.0, 1.0, 0.0),
             "blacks": (-1.0, 1.0, 0.0),
+            # 2. Color Panel
             "temp": (-1.0, 1.0, 0.0),
             "tint": (-1.0, 1.0, 0.0),
             "vibrance": (-1.0, 2.0, 0.0),
             "saturation": (0.0, 4.0, 1.0),
+            # 3. 3-Way Color Wheels
+            "shadows_hue": (0.0, 360.0, 0.0),
+            "shadows_sat": (0.0, 0.5, 0.0),
+            "midtones_hue": (0.0, 360.0, 0.0),
+            "midtones_sat": (0.0, 0.5, 0.0),
+            "highlights_hue": (0.0, 360.0, 0.0),
+            "highlights_sat": (0.0, 0.5, 0.0),
+            "grading_blending": (0.01, 1.0, 0.5),
+            "grading_balance": (-1.0, 1.0, 0.0),
+            # 4. HSL Red
+            "hsl_red_h": (-0.5, 0.5, 0.0),
+            "hsl_red_s": (-1.0, 1.0, 0.0),
+            "hsl_red_l": (-1.0, 1.0, 0.0),
+            # HSL Yellow
+            "hsl_yellow_h": (-0.5, 0.5, 0.0),
+            "hsl_yellow_s": (-1.0, 1.0, 0.0),
+            "hsl_yellow_l": (-1.0, 1.0, 0.0),
+            # HSL Green
+            "hsl_green_h": (-0.5, 0.5, 0.0),
+            "hsl_green_s": (-1.0, 1.0, 0.0),
+            "hsl_green_l": (-1.0, 1.0, 0.0),
+            # HSL Blue
+            "hsl_blue_h": (-0.5, 0.5, 0.0),
+            "hsl_blue_s": (-1.0, 1.0, 0.0),
+            "hsl_blue_l": (-1.0, 1.0, 0.0),
+            # 5. Masking local sliders
+            "mask_exposure": (-2.0, 2.0, 0.0),
+            "mask_temp": (-1.0, 1.0, 0.0),
+            "mask_vibrance": (-1.0, 2.0, 0.0),
         }
         
         # Tkinter variables for sliders
         self.slider_vars = {}
         self.slider_widgets = {}
         self.label_widgets = {}
+        self.mask_type_var = tk.StringVar(value="None")
+        
         for key, (lo, hi, default) in self.slider_ranges.items():
             self.slider_vars[key] = tk.DoubleVar(value=default)
             self.current_adjustments[key] = default
+        self.current_adjustments["mask_type"] = "None"
         self.current_adjustments["rgb_gain"] = [1.0, 1.0, 1.0]
         
         self._setup_ui()
         
-        # Initialize AI engine in background so UI opens immediately
+        # Initialize AI engine in background
         threading.Thread(target=self._init_ai_engine, daemon=True).start()
 
     def _try_zenity_file_dialog(self, *, mode: str, title: str, patterns=None, suggested_filename: str | None = None):
         if not sys.platform.startswith("linux"):
             return None
-
         args = ["zenity"]
         if mode == "open":
             args += ["--file-selection", "--title", title]
@@ -118,15 +152,12 @@ class MainWindow(ctk.CTk):
                     args += ["--file-filter", p]
         else:
             return None
-
         try:
             proc = subprocess.run(args, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         except Exception:
             return None
-
         if proc.returncode != 0:
             return None
-
         picked = (proc.stdout or "").strip()
         return picked or None
 
@@ -138,11 +169,9 @@ class MainWindow(ctk.CTk):
         )
         if picked:
             return picked
-
         initialdir = os.path.expanduser("~/Pictures")
         if not os.path.isdir(initialdir):
             initialdir = os.path.expanduser("~")
-
         return filedialog.askopenfilename(
             parent=self,
             title="Select Image",
@@ -161,11 +190,9 @@ class MainWindow(ctk.CTk):
             if not picked.lower().endswith(".cube"):
                 picked += ".cube"
             return picked
-
         initialdir = os.path.expanduser("~/Documents")
         if not os.path.isdir(initialdir):
             initialdir = os.path.expanduser("~")
-
         return filedialog.asksaveasfilename(
             parent=self,
             title="Save 3D LUT",
@@ -185,7 +212,6 @@ class MainWindow(ctk.CTk):
 
     def _setup_ui(self):
         if _HAS_CUSTOMTKINTER:
-            # Grid layout: left side has visual preview, right side has control panels
             self.grid_columnconfigure(0, weight=1)
             self.grid_columnconfigure(1, weight=1)
             self.grid_rowconfigure(0, weight=1)
@@ -208,7 +234,7 @@ class MainWindow(ctk.CTk):
             self.right_panel = ctk.CTkFrame(self, fg_color="#2b2b2b", corner_radius=15)
             self.right_panel.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
             self.right_panel.grid_columnconfigure(0, weight=1)
-            self.right_panel.grid_rowconfigure(3, weight=1) # Let the text box expand
+            self.right_panel.grid_rowconfigure(2, weight=1) # Let sliders expand
             
             # Header Row
             header_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
@@ -216,18 +242,11 @@ class MainWindow(ctk.CTk):
             
             self.title_label = ctk.CTkLabel(
                 header_frame, 
-                text="HueFlow AI", 
-                font=("Inter", 24, "bold"),
+                text="HueFlow AI Studio", 
+                font=("Inter", 22, "bold"),
                 text_color="#ffffff"
             )
             self.title_label.pack(side="left")
-            self.subtitle_label = ctk.CTkLabel(
-                header_frame, 
-                text="  Zentalic Color Science", 
-                font=("Inter", 12),
-                text_color="#888888"
-            )
-            self.subtitle_label.pack(side="left", padx=5, pady=(5, 0))
             
             # Buttons Row
             buttons_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
@@ -244,7 +263,7 @@ class MainWindow(ctk.CTk):
             
             self.btn_analyze = ctk.CTkButton(
                 buttons_frame, 
-                text="Analyze (AI Auto)", 
+                text="Analyze (AI)", 
                 font=("Inter", 13),
                 height=36,
                 fg_color="#006400",
@@ -256,7 +275,7 @@ class MainWindow(ctk.CTk):
             
             self.btn_export = ctk.CTkButton(
                 buttons_frame, 
-                text="Export .cube LUT", 
+                text="Export LUT", 
                 font=("Inter", 13),
                 height=36,
                 fg_color="#8b0000",
@@ -271,25 +290,66 @@ class MainWindow(ctk.CTk):
             self.scroll_panel.grid(row=2, column=0, sticky="nsew", padx=20, pady=10)
             self.scroll_panel.grid_columnconfigure(0, weight=1)
             
-            # Add sliders to the scroll panel
             row_idx = 0
             
-            # SECTION: LIGHT PANEL
+            # 1. LIGHT PANEL
             lbl_light = ctk.CTkLabel(self.scroll_panel, text="Light Panel (Exposure & Contrast)", font=("Inter", 14, "bold"), text_color="#3b82f6")
             lbl_light.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=10, pady=(10, 5))
             row_idx += 1
-            
-            light_keys = ["exposure", "contrast", "highlights", "shadows", "whites", "blacks"]
-            for k in light_keys:
+            for k in ["exposure", "contrast", "highlights", "shadows", "whites", "blacks"]:
                 row_idx = self._add_ctk_slider(self.scroll_panel, k, row_idx)
                 
-            # SECTION: COLOR PANEL
+            # 2. COLOR PANEL
             lbl_color = ctk.CTkLabel(self.scroll_panel, text="Color Panel (White Balance & Vibrance)", font=("Inter", 14, "bold"), text_color="#10b981")
             lbl_color.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=10, pady=(15, 5))
             row_idx += 1
+            for k in ["temp", "tint", "vibrance", "saturation"]:
+                row_idx = self._add_ctk_slider(self.scroll_panel, k, row_idx)
+
+            # 3. COLOR MIXER (HSL)
+            lbl_hsl = ctk.CTkLabel(self.scroll_panel, text="Color Mixer (HSL Panel)", font=("Inter", 14, "bold"), text_color="#f59e0b")
+            lbl_hsl.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=10, pady=(15, 5))
+            row_idx += 1
+            hsl_keys = [
+                "hsl_red_h", "hsl_red_s", "hsl_red_l",
+                "hsl_yellow_h", "hsl_yellow_s", "hsl_yellow_l",
+                "hsl_green_h", "hsl_green_s", "hsl_green_l",
+                "hsl_blue_h", "hsl_blue_s", "hsl_blue_l"
+            ]
+            for k in hsl_keys:
+                row_idx = self._add_ctk_slider(self.scroll_panel, k, row_idx)
+
+            # 4. COLOR GRADING (3-WAY WHEELS)
+            lbl_wheels = ctk.CTkLabel(self.scroll_panel, text="Color Grading Wheels (Cinematic Tool)", font=("Inter", 14, "bold"), text_color="#ec4899")
+            lbl_wheels.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=10, pady=(15, 5))
+            row_idx += 1
+            wheel_keys = [
+                "shadows_hue", "shadows_sat",
+                "midtones_hue", "midtones_sat",
+                "highlights_hue", "highlights_sat",
+                "grading_blending", "grading_balance"
+            ]
+            for k in wheel_keys:
+                row_idx = self._add_ctk_slider(self.scroll_panel, k, row_idx)
+
+            # 5. MASKING (LOCAL ADJUSTMENTS)
+            lbl_mask = ctk.CTkLabel(self.scroll_panel, text="Masking & Local Adjustments (AI)", font=("Inter", 14, "bold"), text_color="#8b5cf6")
+            lbl_mask.grid(row=row_idx, column=0, columnspan=2, sticky="w", padx=10, pady=(15, 5))
+            row_idx += 1
             
-            color_keys = ["temp", "tint", "vibrance", "saturation"]
-            for k in color_keys:
+            lbl_mask_type = ctk.CTkLabel(self.scroll_panel, text="Mask Selection", font=("Inter", 12), text_color="#dddddd")
+            lbl_mask_type.grid(row=row_idx, column=0, sticky="w", padx=15, pady=2)
+            
+            self.mask_menu = ctk.CTkOptionMenu(
+                self.scroll_panel,
+                values=["None", "Sky", "Subject", "Linear", "Radial"],
+                variable=self.mask_type_var,
+                command=self._on_mask_type_change
+            )
+            self.mask_menu.grid(row=row_idx, column=1, sticky="e", padx=15, pady=2)
+            row_idx += 1
+            
+            for k in ["mask_exposure", "mask_temp", "mask_vibrance"]:
                 row_idx = self._add_ctk_slider(self.scroll_panel, k, row_idx)
                 
             # Output Text Box
@@ -298,9 +358,9 @@ class MainWindow(ctk.CTk):
                 font=("Courier", 11), 
                 fg_color="#1e1e1e",
                 text_color="#00ff00",
-                height=120
+                height=110
             )
-            self.output_box.grid(row=3, column=0, sticky="nsew", padx=20, pady=(10, 20))
+            self.output_box.grid(row=3, column=0, sticky="nsew", padx=20, pady=(5, 15))
             self.output_box.insert("0.0", "Status: Ready.\nMemory footprint: 6GB Limit Mode.\nWaiting for image...")
             self.output_box.configure(state="disabled")
             return
@@ -314,7 +374,7 @@ class MainWindow(ctk.CTk):
         header.grid(row=0, column=0, sticky="ew", padx=16, pady=(16, 8))
         header.grid_columnconfigure(0, weight=1)
 
-        title = tk.Label(header, text="HueFlow AI", fg="white", bg="#1e1e1e", font=("Arial", 18, "bold"))
+        title = tk.Label(header, text="HueFlow AI Studio", fg="white", bg="#1e1e1e", font=("Arial", 18, "bold"))
         title.grid(row=0, column=0, sticky="w")
         subtitle = tk.Label(header, text="(minimal mode)", fg="#aaaaaa", bg="#1e1e1e", font=("Arial", 10))
         subtitle.grid(row=1, column=0, sticky="w")
@@ -352,10 +412,20 @@ class MainWindow(ctk.CTk):
         sliders_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
         sliders_frame.grid_columnconfigure(1, weight=1)
         
-        row_idx = 0
+        # Option Menu
+        lbl_mask = tk.Label(sliders_frame, text="Mask Selection", fg="#cccccc", bg="#111111", font=("Arial", 9))
+        lbl_mask.grid(row=0, column=0, sticky="w", padx=5)
+        self.mask_menu = tk.OptionMenu(
+            sliders_frame,
+            self.mask_type_var,
+            "None", "Sky", "Subject", "Linear", "Radial",
+            command=self._on_mask_type_change
+        )
+        self.mask_menu.grid(row=0, column=1, sticky="ew", padx=5)
+        
+        row_idx = 1
         # Add normal sliders
-        all_keys = ["exposure", "contrast", "highlights", "shadows", "whites", "blacks", "temp", "tint", "vibrance", "saturation"]
-        for k in all_keys:
+        for k in self.slider_ranges.keys():
             row_idx = self._add_tk_slider(sliders_frame, k, row_idx)
 
         self.output_box = tk.Text(right, bg="#0f0f0f", fg="#00ff00", insertbackground="#00ff00", font=("Courier", 10), height=8)
@@ -365,12 +435,11 @@ class MainWindow(ctk.CTk):
 
     def _add_ctk_slider(self, parent, key: str, row_idx: int) -> int:
         lo, hi, default = self.slider_ranges[key]
-        
-        lbl_name = ctk.CTkLabel(parent, text=key.capitalize(), font=("Inter", 12), text_color="#dddddd")
-        lbl_name.grid(row=row_idx, column=0, sticky="w", padx=15, pady=2)
+        lbl_name = ctk.CTkLabel(parent, text=key.replace("hsl_", "").replace("_", " ").title(), font=("Inter", 11), text_color="#dddddd")
+        lbl_name.grid(row=row_idx, column=0, sticky="w", padx=15, pady=1)
         
         lbl_val = ctk.CTkLabel(parent, text=f"{default:.2f}", font=("Inter", 11), text_color="#aaaaaa")
-        lbl_val.grid(row=row_idx, column=1, sticky="e", padx=15, pady=2)
+        lbl_val.grid(row=row_idx, column=1, sticky="e", padx=15, pady=1)
         self.label_widgets[key] = lbl_val
         row_idx += 1
         
@@ -381,14 +450,14 @@ class MainWindow(ctk.CTk):
             variable=self.slider_vars[key],
             command=self._on_slider_move
         )
-        slider.grid(row=row_idx, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 8))
+        slider.grid(row=row_idx, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 6))
         self.slider_widgets[key] = slider
         row_idx += 1
         return row_idx
 
     def _add_tk_slider(self, parent, key: str, row_idx: int) -> int:
         lo, hi, default = self.slider_ranges[key]
-        lbl = tk.Label(parent, text=key.capitalize(), fg="#cccccc", bg="#111111", font=("Arial", 9))
+        lbl = tk.Label(parent, text=key.replace("hsl_", "").replace("_", " ").title(), fg="#cccccc", bg="#111111", font=("Arial", 9))
         lbl.grid(row=row_idx, column=0, sticky="w", padx=5)
         
         slider = tk.Scale(
@@ -415,12 +484,15 @@ class MainWindow(ctk.CTk):
             if key in self.label_widgets:
                 self.label_widgets[key].configure(text=f"{val:.2f}")
 
+    def _on_mask_type_change(self, _val):
+        self._on_slider_move()
+
     def _on_slider_move(self, _val=None):
         self._update_all_labels()
-        # Debounce the preview update to avoid lagging the UI while dragging
+        # Debounce to avoid dragging lag
         if self._preview_timer:
             self.after_cancel(self._preview_timer)
-        self._preview_timer = self.after(120, self._apply_current_slider_adjustments)
+        self._preview_timer = self.after(100, self._apply_current_slider_adjustments)
 
     def _apply_current_slider_adjustments(self):
         if not self.current_image_path:
@@ -428,7 +500,8 @@ class MainWindow(ctk.CTk):
         adj = {}
         for k in self.slider_ranges.keys():
             adj[k] = self.slider_vars[k].get()
-        # Keep the AI-predicted RGB gain if we have it
+        adj["mask_type"] = self.mask_type_var.get()
+        
         if "rgb_gain" in self.current_adjustments:
             adj["rgb_gain"] = self.current_adjustments["rgb_gain"]
         else:
@@ -446,7 +519,6 @@ class MainWindow(ctk.CTk):
                 adj,
                 graded_path
             )
-            # Display updated image on main thread
             self.after(0, lambda: self._display_image(self.current_graded_image_path))
         except Exception as e:
             print(f"Error grading from slider: {e}")
@@ -455,21 +527,19 @@ class MainWindow(ctk.CTk):
         for key in self.slider_ranges.keys():
             if key in adj:
                 self.slider_vars[key].set(float(adj[key]))
-            elif key == "temp" and "temperature" in adj:
-                self.slider_vars[key].set(float(adj["temperature"]))
+        if "mask_type" in adj:
+            self.mask_type_var.set(str(adj["mask_type"]))
         self._update_all_labels()
 
     def log(self, text):
+        self.output_box.configure(state="normal")
         if _HAS_CUSTOMTKINTER:
-            self.output_box.configure(state="normal")
             self.output_box.delete("0.0", "end")
             self.output_box.insert("0.0", text)
-            self.output_box.configure(state="disabled")
         else:
-            self.output_box.configure(state="normal")
             self.output_box.delete("1.0", "end")
             self.output_box.insert("1.0", text)
-            self.output_box.configure(state="disabled")
+        self.output_box.configure(state="disabled")
 
     def upload_image(self):
         file_path = self._pick_image_path()
@@ -477,14 +547,16 @@ class MainWindow(ctk.CTk):
             self.current_image_path = file_path
             self.current_graded_image_path = None
             
-            # Reset sliders to default values
+            # Reset sliders
             for key, (lo, hi, default) in self.slider_ranges.items():
                 self.slider_vars[key].set(default)
+            self.mask_type_var.set("None")
             self._update_all_labels()
+            
             self.current_adjustments = {k: self.slider_ranges[k][2] for k in self.slider_ranges.keys()}
+            self.current_adjustments["mask_type"] = "None"
             self.current_adjustments["rgb_gain"] = [1.0, 1.0, 1.0]
             
-            # Display Image
             try:
                 self._display_image(file_path)
                 self.log(f"Image loaded: {os.path.basename(file_path)}\nReady for analysis.")
@@ -499,12 +571,9 @@ class MainWindow(ctk.CTk):
         if self.ai_engine is None:
             self.log("AI Engine is still loading. Please wait...")
             return
-            
         self.btn_analyze.configure(state="disabled")
         self.btn_upload.configure(state="disabled")
         self.log("Running AirLLM layer-by-layer inference...\nThis may take a moment on i3 CPUs.")
-        
-        # Run inference in a background thread to keep UI responsive
         threading.Thread(target=self._run_inference_task).start()
 
     def _run_inference_task(self):
@@ -512,7 +581,6 @@ class MainWindow(ctk.CTk):
             result = self.ai_engine.analyze_image(self.current_image_path)
             self.current_adjustments = result.get("adjustments", {})
 
-            # Write a graded PNG next to the input image
             base, _ext = os.path.splitext(self.current_image_path)
             graded_path = base + "_graded.png"
             try:
@@ -530,14 +598,12 @@ class MainWindow(ctk.CTk):
             if self.current_graded_image_path:
                 display_text += f"\n\nGraded PNG saved to:\n{self.current_graded_image_path}"
             
-            # Update UI from main thread
             self.after(0, self.log, display_text)
             self.after(0, lambda: self._update_sliders_from_adjustments(self.current_adjustments))
             self.after(0, lambda: self.btn_export.configure(state="normal"))
             self.after(0, lambda: self.btn_upload.configure(state="normal"))
             self.after(0, lambda: self.btn_analyze.configure(state="normal"))
 
-            # Swap preview to the graded image if possible
             if self.current_graded_image_path:
                 self.after(0, lambda: self._display_image(self.current_graded_image_path))
             
@@ -564,10 +630,11 @@ class MainWindow(ctk.CTk):
             self.log(f"Error displaying image: {e}")
 
     def export_lut(self):
-        # Read final slider values to ensure any custom tweaks are included
         adj = {}
         for k in self.slider_ranges.keys():
             adj[k] = self.slider_vars[k].get()
+        adj["mask_type"] = self.mask_type_var.get()
+        
         if "rgb_gain" in self.current_adjustments:
             adj["rgb_gain"] = self.current_adjustments["rgb_gain"]
         else:
