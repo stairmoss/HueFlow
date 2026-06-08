@@ -65,11 +65,17 @@
     </div>
     
     <div class="flex items-center space-x-3">
-      <button onclick="uploadImage()" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 text-gray-200 text-sm font-medium rounded-xl border border-gray-700 transition flex items-center space-x-2">
+      <!-- Web Upload (browser file selector) -->
+      <button onclick="document.getElementById('web-file-input').click()" class="px-4 py-2 bg-gray-800 hover:bg-gray-750 text-gray-200 text-sm font-medium rounded-xl border border-gray-700 transition flex items-center space-x-2">
         <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
         </svg>
         <span>Upload Image</span>
+      </button>
+      
+      <!-- Native Server Picker -->
+      <button onclick="uploadImage()" class="px-3.5 py-2 bg-gray-800 hover:bg-gray-750 text-gray-400 hover:text-gray-200 text-xs font-semibold rounded-xl border border-gray-700 transition" title="Open native file dialog on the host computer">
+        Native Dialog
       </button>
       <button id="btn-analyze" onclick="startAnalysis()" disabled class="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-lg shadow-purple-600/15 transition flex items-center space-x-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,14 +123,15 @@
         </div>
 
         <!-- Placeholder -->
-        <div id="image-placeholder" class="text-center p-8 border-2 border-dashed border-gray-800 rounded-2xl max-w-md">
+        <div id="image-placeholder" onclick="document.getElementById('web-file-input').click()" class="text-center p-8 border-2 border-dashed border-gray-800 hover:border-purple-550/40 hover:bg-purple-950/5 cursor-pointer rounded-2xl max-w-md transition-all duration-300">
+          <input type="file" id="web-file-input" class="hidden" accept="image/*" onchange="onWebFileSelected(event)">
           <div class="w-16 h-16 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto mb-4 text-purple-400">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
             </svg>
           </div>
-          <h3 class="text-md font-semibold text-gray-355">No Active Project</h3>
-          <p class="text-xs text-gray-500 mt-2">Upload a photo to start adjusting Exposure, Contrast, HSL, Color Wheels, and local AI masks.</p>
+          <h3 class="text-md font-semibold text-gray-300">No Active Project</h3>
+          <p class="text-xs text-gray-500 mt-2">Click to browse or drag & drop an image here to start adjusting Exposure, Contrast, HSL, Color Wheels, and local AI masks.</p>
         </div>
       </div>
       
@@ -153,6 +160,20 @@
       <!-- Tab Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6" id="tab-adjustments">
         
+        <!-- Reset Header -->
+        <div class="flex justify-between items-center bg-gray-950/40 p-3.5 rounded-xl border border-gray-800/60 mb-2">
+          <div>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-gray-300">Grade Controls</h2>
+            <p class="text-[10px] text-gray-500">Fine-tune your color adjustments</p>
+          </div>
+          <button onclick="resetSliders()" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 active:scale-95 text-gray-300 hover:text-white text-xs font-semibold rounded-lg border border-gray-750 transition flex items-center space-x-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17.7"></path>
+            </svg>
+            <span>Reset All</span>
+          </button>
+        </div>
+
         <!-- Section: Light -->
         <div>
           <h3 class="text-xs font-bold uppercase tracking-wider text-blue-400 mb-4 flex items-center space-x-2">
@@ -615,6 +636,55 @@
       }
     }
 
+    async function uploadFileDirectly(file) {
+      if (!file) return;
+      addLog(`[Client] Uploading ${file.name} to server directly...`);
+      try {
+        const res = await fetch('/api/upload_web', {
+          method: 'POST',
+          headers: {
+            'X-File-Name': file.name,
+            'Content-Type': file.type
+          },
+          body: file
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          originalPath = data.original_path;
+          gradedPath = data.graded_path;
+          
+          document.getElementById('img-original').src = `/static/load?path=${encodeURIComponent(originalPath)}&t=${Date.now()}`;
+          document.getElementById('img-graded').src = `/static/load?path=${encodeURIComponent(gradedPath)}&t=${Date.now()}`;
+          
+          document.getElementById('image-placeholder').classList.add('hidden');
+          document.getElementById('image-container').classList.remove('hidden');
+          
+          // Enable buttons
+          document.getElementById('btn-analyze').disabled = false;
+          document.getElementById('btn-export').disabled = false;
+          
+          // Reset slider defaults
+          resetSlidersToDefaults();
+          
+          // Status badge
+          document.getElementById('status-dot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+          document.getElementById('status-text').innerText = 'Ready / Photo Loaded';
+          
+          addLog(`[System] Photo uploaded and loaded successfully: ${originalPath}`);
+        } else {
+          addLog(`[Client] Upload failed: ${data.message || 'unknown error'}`, 'text-yellow-450');
+        }
+      } catch (err) {
+        addLog(`[System] Error uploading image: ${err}`, 'text-red-400');
+      }
+    }
+
+    function onWebFileSelected(event) {
+      if (event.target.files && event.target.files.length > 0) {
+        uploadFileDirectly(event.target.files[0]);
+      }
+    }
+ 
     function resetSlidersToDefaults() {
       const defaults = {
         exposure: 0, contrast: 1, highlights: 0, shadows: 0, whites: 0, blacks: 0,
@@ -636,6 +706,12 @@
         }
       }
       document.getElementById('mask-select').value = "None";
+    }
+
+    function resetSliders() {
+      resetSlidersToDefaults();
+      triggerLiveGrade();
+      addLog("[Client] Reset all adjustments to defaults.");
     }
 
     function updateSlider(key) {
@@ -804,6 +880,26 @@
       const x = touch.clientX - rect.left;
       const pct = (x / rect.width) * 100;
       updateSplitPosition(pct);
+    });
+
+    // Drag and drop setup for placeholder
+    const placeholder = document.getElementById('image-placeholder');
+    
+    placeholder.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      placeholder.classList.add('border-purple-500', 'bg-purple-950/10');
+    });
+    
+    placeholder.addEventListener('dragleave', () => {
+      placeholder.classList.remove('border-purple-500', 'bg-purple-950/10');
+    });
+    
+    placeholder.addEventListener('drop', (e) => {
+      e.preventDefault();
+      placeholder.classList.remove('border-purple-500', 'bg-purple-950/10');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        uploadFileDirectly(e.dataTransfer.files[0]);
+      }
     });
   </script>
 </body>
