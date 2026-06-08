@@ -190,6 +190,42 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
         path = parsed.path
         
         content_length = int(self.headers.get('Content-Length', 0))
+        
+        if path == "/api/upload_web":
+            body_bytes = self.rfile.read(content_length)
+            uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+            os.makedirs(uploads_dir, exist_ok=True)
+            
+            filename = self.headers.get('X-File-Name', 'uploaded_image.png')
+            file_path = os.path.join(uploads_dir, filename)
+            
+            with open(file_path, 'wb') as f:
+                f.write(body_bytes)
+                
+            base, _ext = os.path.splitext(file_path)
+            graded_path = base + "_graded.png"
+            
+            runner = _SERVER_RUNNER
+            runner.main_window.current_image_path = file_path
+            runner.main_window.current_graded_image_path = graded_path
+            
+            try:
+                from PIL import Image
+                img = Image.open(file_path)
+                img.save(graded_path)
+            except Exception as e:
+                print(f"Failed to create start graded image: {e}")
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "status": "success",
+                "original_path": file_path,
+                "graded_path": graded_path
+            }).encode("utf-8"))
+            return
+
         body = self.rfile.read(content_length).decode('utf-8')
         
         try:
