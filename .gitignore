@@ -16,3 +16,6 @@ build/
 .idea/
 .vscode/
 *.cube
+uploads/
+test_input.png
+
