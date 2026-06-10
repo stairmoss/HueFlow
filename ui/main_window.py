@@ -305,6 +305,20 @@ def launch_app():
             
     threading.Thread(target=load_engine, daemon=True).start()
     
+    # Check if headless mode is requested or required (no DISPLAY on Linux)
+    headless = "--headless" in sys.argv or (sys.platform.startswith("linux") and not os.environ.get("DISPLAY"))
+    if headless:
+        print("Running in HEADLESS mode (bypassing Tkinter GUI to prevent thread starvation).")
+        print(f"HueFlow Web Studio is active at: http://127.0.0.1:{runner.port}")
+        import time
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("Shutting down server.")
+            sys.exit(0)
+        return
+
     # 4. Attempt native pywebview frame launch
     url = f"http://127.0.0.1:{runner.port}"
     try:

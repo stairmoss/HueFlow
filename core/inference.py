@@ -157,6 +157,128 @@ class ColorGraderInference:
             }
         }
 
+    def chat_grade_image(self, current_adjustments: dict, prompt: str) -> dict:
+        """
+        Process a chat prompt to modify the color grading adjustments.
+        Supports semantic rule-based keyword mapping for instant local upgrades,
+        with fallback/integration options.
+        """
+        import copy
+        adjustments = copy.deepcopy(current_adjustments)
+        
+        defaults = {
+            "exposure": 0.0, "contrast": 1.0, "highlights": 0.0, "shadows": 0.0, "whites": 0.0, "blacks": 0.0,
+            "temp": 0.0, "tint": 0.0, "vibrance": 0.0, "saturation": 1.0,
+            "shadows_hue": 0.0, "shadows_sat": 0.0, "midtones_hue": 0.0, "midtones_sat": 0.0, "highlights_hue": 0.0, "highlights_sat": 0.0,
+            "grading_blending": 0.5, "grading_balance": 0.0,
+            "hsl_red_h": 0.0, "hsl_red_s": 0.0, "hsl_red_l": 0.0,
+            "hsl_yellow_h": 0.0, "hsl_yellow_s": 0.0, "hsl_yellow_l": 0.0,
+            "hsl_green_h": 0.0, "hsl_green_s": 0.0, "hsl_green_l": 0.0,
+            "hsl_blue_h": 0.0, "hsl_blue_s": 0.0, "hsl_blue_l": 0.0,
+            "mask_type": "None", "mask_exposure": 0.0, "mask_temp": 0.0, "mask_vibrance": 0.0
+        }
+        
+        for k, v in defaults.items():
+            if k not in adjustments:
+                adjustments[k] = v
+
+        prompt_lower = prompt.lower()
+        thought = ""
+        
+        if "teal" in prompt_lower and "orange" in prompt_lower:
+            thought = "Establishing a classic Hollywood teal-and-orange contrast. Shifting highlights to warm golden-orange and shadows to cool cyan-teal, boosting contrast for dynamic pop."
+            adjustments["shadows_hue"] = 210.0
+            adjustments["shadows_sat"] = 0.25
+            adjustments["highlights_hue"] = 35.0
+            adjustments["highlights_sat"] = 0.20
+            adjustments["contrast"] = max(adjustments["contrast"], 1.15)
+            adjustments["temp"] = max(adjustments["temp"], 0.05)
+            
+        elif "cinematic" in prompt_lower or "film" in prompt_lower or "movie" in prompt_lower:
+            thought = "Applying a cinematic film grade. Lowering highlights slightly to protect whites, lifting shadows, shifting highlights toward warm hues, and adding gentle saturation."
+            adjustments["contrast"] = 1.15
+            adjustments["shadows"] = 0.10
+            adjustments["highlights"] = -0.05
+            adjustments["temp"] = 0.05
+            adjustments["saturation"] = 1.1
+            adjustments["shadows_hue"] = 220.0
+            adjustments["shadows_sat"] = 0.08
+            adjustments["highlights_hue"] = 45.0
+            adjustments["highlights_sat"] = 0.08
+            
+        elif "sunset" in prompt_lower or "warm" in prompt_lower or "golden" in prompt_lower:
+            thought = "Enhancing warm golden tones. Shifting white balance towards amber-yellow, boosting saturation of reds/yellows, and warming the highlights."
+            adjustments["temp"] = min(adjustments["temp"] + 0.3, 1.0)
+            adjustments["hsl_yellow_s"] = min(adjustments["hsl_yellow_s"] + 0.2, 1.0)
+            adjustments["hsl_red_s"] = min(adjustments["hsl_red_s"] + 0.15, 1.0)
+            adjustments["highlights_hue"] = 45.0
+            adjustments["highlights_sat"] = 0.15
+            
+        elif "cool" in prompt_lower or "cold" in prompt_lower or "winter" in prompt_lower or "blue" in prompt_lower:
+            thought = "Cooling down the aesthetic. Shifting white balance towards blue, increasing green/blue saturation, and adding cool cyan shadows."
+            adjustments["temp"] = max(adjustments["temp"] - 0.3, -1.0)
+            adjustments["hsl_blue_s"] = min(adjustments["hsl_blue_s"] + 0.25, 1.0)
+            adjustments["shadows_hue"] = 215.0
+            adjustments["shadows_sat"] = 0.15
+            
+        elif "matrix" in prompt_lower or "green" in prompt_lower or "cyberpunk" in prompt_lower:
+            thought = "Applying a stylized cyberpunk matrix look. Shifting tint towards green and tinting shadows/midtones to emerald hues."
+            adjustments["tint"] = max(adjustments["tint"] - 0.3, -1.0)
+            adjustments["midtones_hue"] = 120.0
+            adjustments["midtones_sat"] = 0.12
+            adjustments["shadows_hue"] = 140.0
+            adjustments["shadows_sat"] = 0.15
+            
+        elif "black and white" in prompt_lower or "monochrome" in prompt_lower or "noir" in prompt_lower or "bw" in prompt_lower:
+            thought = "Converting to dramatic high-contrast monochrome. Setting global saturation to zero, boosting contrast, and adjusting whites and blacks for punchy shadows."
+            adjustments["saturation"] = 0.0
+            adjustments["vibrance"] = -1.0
+            adjustments["contrast"] = max(adjustments["contrast"], 1.35)
+            adjustments["blacks"] = min(adjustments["blacks"] - 0.1, -0.05)
+            adjustments["whites"] = min(adjustments["whites"] + 0.1, 0.2)
+            
+        elif "bright" in prompt_lower or "expose" in prompt_lower or "high key" in prompt_lower:
+            thought = "Increasing brightness. Raising exposure, opening shadows, and lifting whites to introduce a high-key airy look."
+            adjustments["exposure"] = min(adjustments["exposure"] + 0.4, 2.0)
+            adjustments["shadows"] = min(adjustments["shadows"] + 0.2, 1.0)
+            adjustments["whites"] = min(adjustments["whites"] + 0.15, 1.0)
+            
+        elif "dark" in prompt_lower or "moody" in prompt_lower or "low key" in prompt_lower:
+            thought = "Establishing a dark, moody atmosphere. Lowering exposure, dropping shadows, and shifting blacks downward while boosting midtone contrast."
+            adjustments["exposure"] = max(adjustments["exposure"] - 0.4, -2.0)
+            adjustments["shadows"] = max(adjustments["shadows"] - 0.25, -1.0)
+            adjustments["blacks"] = max(adjustments["blacks"] - 0.15, -1.0)
+            adjustments["contrast"] = max(adjustments["contrast"], 1.2)
+            
+        elif "vibrant" in prompt_lower or "pop" in prompt_lower or "colorful" in prompt_lower:
+            thought = "Boosting vibrance and saturation. Selectively enhancing muted colors first via vibrance, and slightly lifting global saturation for extra punch."
+            adjustments["vibrance"] = min(adjustments["vibrance"] + 0.35, 2.0)
+            adjustments["saturation"] = min(adjustments["saturation"] + 0.15, 2.0)
+            
+        elif "flat" in prompt_lower or "log" in prompt_lower or "soft" in prompt_lower:
+            thought = "Softening the image. Decreasing contrast, lifting blacks, and dropping highlights to create a low-contrast logarithmic look."
+            adjustments["contrast"] = max(adjustments["contrast"] - 0.3, 0.5)
+            adjustments["blacks"] = min(adjustments["blacks"] + 0.15, 1.0)
+            adjustments["highlights"] = max(adjustments["highlights"] - 0.15, -1.0)
+            
+        elif "reset" in prompt_lower or "clear" in prompt_lower or "default" in prompt_lower:
+            thought = "Resetting all grading controls to absolute neutral defaults."
+            adjustments = copy.deepcopy(defaults)
+            
+        else:
+            thought = f"Adjusting settings to reflect: '{prompt}'. Applied minor adjustments to saturation and contrast balance."
+            if "saturation" in prompt_lower or "color" in prompt_lower:
+                adjustments["saturation"] = min(adjustments["saturation"] + 0.1, 2.0)
+            if "contrast" in prompt_lower:
+                adjustments["contrast"] = min(adjustments["contrast"] + 0.1, 2.0)
+            if "brightness" in prompt_lower or "exposure" in prompt_lower:
+                adjustments["exposure"] = min(adjustments["exposure"] + 0.1, 2.0)
+                
+        return {
+            "thought": thought,
+            "adjustments": adjustments
+        }
+
 if __name__ == "__main__":
     grader = ColorGraderInference()
     result = grader.analyze_image("dummy.jpg")

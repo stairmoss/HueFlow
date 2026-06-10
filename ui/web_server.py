@@ -101,8 +101,17 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 except Exception as e:
                     print(f"Webview dialog error: {e}")
                     file_path = None
-            else:
+            elif runner.main_window is not None:
                 file_path = runner.run_on_main_thread(runner.main_window._pick_image_path)
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "error",
+                    "message": "Native dialog unavailable in headless mode. Please drag & drop or upload your image directly."
+                }).encode("utf-8"))
+                return
             
             if file_path:
                 base, _ext = os.path.splitext(file_path)
@@ -259,6 +268,42 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 print(f"Error grading image in server: {e}")
             return
 
+        elif path == "/api/chat":
+            prompt = params.get("prompt", "")
+            current_adjustments = params.get("current_adjustments", {})
+            runner = _SERVER_RUNNER
+            engine = runner.main_window.ai_engine
+            
+            if engine is None:
+                from core.inference import ColorGraderInference
+                engine = ColorGraderInference()
+                
+            try:
+                result = engine.chat_grade_image(current_adjustments, prompt)
+                original_path = runner.main_window.current_image_path
+                graded_path = runner.main_window.current_graded_image_path
+                if original_path and graded_path:
+                    from utils.image_grade import apply_adjustments_to_image
+                    apply_adjustments_to_image(original_path, result.get("adjustments", {}), graded_path)
+                    runner.main_window.current_adjustments = result.get("adjustments", {})
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "result": result
+                }).encode("utf-8"))
+            except Exception as e:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "status": "error",
+                    "message": str(e)
+                }).encode("utf-8"))
+            return
+
         elif path == "/api/export":
             adjustments = params.get("adjustments", {})
             runner = _SERVER_RUNNER
@@ -276,8 +321,11 @@ class HueFlowHTTPHandler(BaseHTTPRequestHandler):
                 except Exception as e:
                     print(f"Webview save dialog error: {e}")
                     lut_path = None
-            else:
+            elif runner.main_window is not None:
                 lut_path = runner.run_on_main_thread(runner.main_window._pick_lut_save_path)
+            else:
+                os.makedirs(os.path.join(os.path.dirname(__file__), "..", "uploads"), exist_ok=True)
+                lut_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads", "HueFlow_Grade.cube"))
             
             if lut_path:
                 try:

@@ -155,7 +155,7 @@ def apply_adjustments_to_image(
     g_low_mask = g < 0.5
     g[g_low_mask] += shadows * ((0.5 - g[g_low_mask]) / 0.5) * g[g_low_mask]
     b_low_mask = b < 0.5
-    b[b_low_mask] += shadows * ((0.5 - b_low_mask) / 0.5) * b[b_low_mask]
+    b[b_low_mask] += shadows * ((0.5 - b[b_low_mask]) / 0.5) * b[b_low_mask]
     
     # Whites & Blacks
     r += whites * (r ** 2)

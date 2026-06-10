@@ -95,24 +95,70 @@
   <!-- Main Workspace -->
   <main class="flex-1 flex overflow-hidden">
     
+    <!-- Left Activity Bar (VS Code Style) -->
+    <div class="w-16 bg-gray-950 border-r border-gray-850 flex flex-col items-center justify-between py-6 flex-shrink-0">
+      <div class="flex flex-col items-center space-y-5 w-full">
+        <!-- Sliders Tab Button -->
+        <button id="btn-side-adjustments" onclick="switchSidebarTab('adjustments')" class="w-10 h-10 rounded-xl flex items-center justify-center text-purple-400 bg-purple-600/10 border border-purple-500/20 transition-all duration-200" title="Manual Controls">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+          </svg>
+        </button>
+        
+        <!-- AI Agent Tab Button -->
+        <button id="btn-side-copilot" onclick="switchSidebarTab('copilot')" class="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-gray-900 transition-all duration-200 relative" title="AI Copilot Agent">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-purple-500 border border-gray-950 animate-pulse" id="side-copilot-dot"></span>
+        </button>
+
+        <!-- AI Analysis Log Button -->
+        <button id="btn-side-logs" onclick="switchSidebarTab('logs')" class="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-gray-900 transition-all duration-200" title="AI Logs">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="flex flex-col items-center space-y-4">
+        <!-- Timeline Show/Hide Toggle Button -->
+        <button id="btn-side-timeline" onclick="toggleTimeline()" class="w-10 h-10 rounded-xl flex items-center justify-center text-purple-400 bg-purple-600/10 border border-purple-500/20 transition-all duration-200" title="Toggle Timeline Panel">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Left: Canvas/Preview -->
     <div class="flex-1 bg-gray-950 p-6 flex flex-col justify-between items-center relative overflow-hidden">
-      <!-- Status Badge -->
-      <div class="absolute top-4 left-4 z-10">
+      <!-- Status Badge & View Mode Toggle -->
+      <div class="absolute top-4 left-4 z-10 flex items-center space-x-2">
         <span id="status-badge" class="px-3 py-1.5 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-full text-xs font-semibold text-gray-400 flex items-center space-x-2">
           <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" id="status-dot"></span>
           <span id="status-text">Waiting for Image...</span>
         </span>
+        <button id="btn-toggle-view" onclick="toggleViewMode()" disabled class="px-3 py-1.5 bg-gray-900/80 hover:bg-gray-850 disabled:opacity-40 disabled:cursor-not-allowed backdrop-blur border border-gray-800 rounded-full text-xs font-semibold text-purple-400 hover:text-purple-300 transition flex items-center space-x-1.5" title="Switch layout between Split Screen and Side-by-Side">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+          </svg>
+          <span id="txt-view-mode">Split View</span>
+        </button>
       </div>
 
       <!-- Comparison Slider Workspace -->
       <div class="flex-1 w-full flex items-center justify-center relative select-none">
         <div id="image-container" class="relative max-w-full max-h-[500px] overflow-hidden rounded-2xl border border-gray-800 shadow-2xl hidden">
-          <!-- Graded Image -->
-          <img id="img-graded" class="max-h-[500px] object-contain w-full h-auto" src="" alt="Graded View">
+          <!-- Graded Image Wrapper -->
+          <div id="img-graded-wrapper" class="w-full h-full flex items-center justify-center relative">
+            <img id="img-graded" class="max-h-[500px] object-contain w-full h-auto" src="" alt="Graded View">
+            <div id="lbl-graded-badge" class="absolute bottom-4 right-4 z-10 px-2 py-1 bg-purple-950/90 text-[10px] font-bold text-purple-300 rounded border border-purple-800/40 hidden">GRADED</div>
+          </div>
           <!-- Original Image (with clip-path) -->
           <div id="img-original-wrapper" class="absolute inset-0 overflow-hidden pointer-events-none" style="clip-path: polygon(0 0, 50% 0, 50% 100%, 0 100%);">
             <img id="img-original" class="max-h-[500px] object-contain w-full h-auto" src="" alt="Original View">
+            <div id="lbl-original-badge" class="absolute bottom-4 left-4 z-10 px-2 py-1 bg-gray-900/90 text-[10px] font-bold text-gray-400 rounded border border-gray-800 hidden">ORIGINAL</div>
           </div>
           <!-- Split Divider Line -->
           <div id="split-handle" class="absolute top-0 bottom-0 w-1 bg-white/80 cursor-ew-resize flex items-center justify-center group" style="left: 50%;">
@@ -135,8 +181,86 @@
         </div>
       </div>
       
+      <!-- Timeline Control Panel -->
+      <div id="timeline-panel" class="w-full bg-gray-900 border border-gray-800 rounded-2xl flex flex-col overflow-hidden transition-all duration-300 mt-4 select-none">
+        
+        <!-- Timeline Toolbar -->
+        <div class="bg-gray-950 px-4 py-2 border-b border-gray-800 flex items-center justify-between text-xs text-gray-400">
+          <div class="flex items-center space-x-4">
+            <!-- Transport Controls -->
+            <div class="flex items-center space-x-2">
+              <button onclick="timelinePrevFrame()" class="hover:text-white transition" title="Previous Frame">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"></path>
+                </svg>
+              </button>
+              <button id="btn-timeline-play" onclick="toggleTimelinePlay()" class="w-7 h-7 rounded-full bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition" title="Play / Pause">
+                <svg id="play-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                </svg>
+              </button>
+              <button onclick="timelineNextFrame()" class="hover:text-white transition" title="Next Frame">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.934 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.334-4zM19.934 12.8a1 1 0 000-1.6l-5.334-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.334-4z"></path>
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Timecode -->
+            <div class="font-mono text-purple-400 bg-purple-950/20 px-2 py-0.5 rounded border border-purple-500/10" id="timeline-timecode">
+              00:00:00:00
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-3">
+            <span class="text-[10px] text-gray-550 font-medium">Active Clip: <span id="timeline-clip-name" class="text-gray-400">None</span></span>
+            <div class="w-[1px] h-3 bg-gray-800"></div>
+            <span class="text-[10px] text-gray-400">10s Zoom</span>
+          </div>
+        </div>
+
+        <!-- Tracks Area -->
+        <div class="flex-1 flex flex-col bg-gray-900/60 overflow-hidden relative" style="height: 110px;">
+          <!-- Ruler -->
+          <div class="h-6 bg-gray-950 border-b border-gray-850 flex relative text-[9px] text-gray-500 select-none overflow-hidden" id="timeline-ruler"></div>
+
+          <!-- Playhead Line -->
+          <div id="timeline-playhead-line" class="absolute top-0 bottom-0 w-[2px] bg-purple-500 z-35 pointer-events-none" style="left: 0%;">
+            <div class="w-3 h-3 bg-purple-500 rotate-45 absolute -top-1.5 -left-1.5 rounded-sm"></div>
+          </div>
+
+          <!-- Scrub Overlay -->
+          <div id="timeline-scrub-area" class="absolute inset-x-0 top-0 h-6 cursor-col-resize z-30"></div>
+
+          <!-- Track V1 (Media) -->
+          <div class="h-10 border-b border-gray-850 flex items-center px-4 relative group">
+            <span class="text-[10px] font-semibold text-gray-500 w-12 flex-shrink-0">V1 (Media)</span>
+            <div class="flex-1 h-7 bg-purple-900/10 border border-purple-500/10 rounded-md relative overflow-hidden flex items-center px-2 cursor-pointer transition" id="timeline-video-clip" onclick="selectTimelineTrack('video')">
+              <div class="w-8 h-5 bg-gray-800 rounded mr-2 overflow-hidden flex-shrink-0 flex items-center justify-center border border-gray-700">
+                <img id="timeline-thumbnail" src="" class="w-full h-full object-cover hidden">
+                <svg id="timeline-thumb-placeholder" class="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <span class="text-[9px] text-purple-300 font-medium truncate" id="timeline-video-label">No media loaded</span>
+            </div>
+          </div>
+
+          <!-- Track A1 (Grade) -->
+          <div class="h-10 flex items-center px-4 relative group">
+            <span class="text-[10px] font-semibold text-gray-500 w-12 flex-shrink-0">A1 (Grade)</span>
+            <div class="flex-1 h-7 bg-emerald-900/30 border border-emerald-500 rounded-md relative flex items-center px-2 cursor-pointer transition border-dashed" id="timeline-grade-clip" onclick="selectTimelineTrack('adjustments')">
+              <svg class="w-3 h-3 text-emerald-450 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+              </svg>
+              <span class="text-[9px] text-emerald-300 font-medium truncate" id="timeline-grade-label">Color Grading Adjustments</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Quick Info Bar -->
-      <div class="w-full max-w-xl bg-gray-900/50 border border-gray-800/80 rounded-xl px-4 py-3 text-xs text-gray-400 flex items-center justify-between">
+      <div class="w-full max-w-xl bg-gray-900/50 border border-gray-800/80 rounded-xl px-4 py-3 text-xs text-gray-400 flex items-center justify-between mt-3 flex-shrink-0">
         <span class="flex items-center space-x-2">
           <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
           <span>Inference: Moondream2 4-Bit</span>
@@ -147,16 +271,6 @@
 
     <!-- Right: Sidebar Controls -->
     <div class="w-[420px] bg-gray-900 border-l border-gray-800 flex flex-col h-full overflow-hidden">
-      <!-- Tabs Header -->
-      <div class="border-b border-gray-800 flex bg-gray-950 p-2 space-x-1 flex-shrink-0">
-        <button onclick="switchTab('adjustments')" id="tab-btn-adjustments" class="flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition">
-          Sliders
-        </button>
-        <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition">
-          AI Analysis Log
-        </button>
-      </div>
-
       <!-- Tab Content Area -->
       <div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6" id="tab-adjustments">
         
@@ -553,6 +667,57 @@
           <span class="text-gray-500">[System] Studio is ready. Waiting for project launch...</span>
         </div>
       </div>
+
+      <!-- Tab: AI Copilot -->
+      <div class="flex-1 overflow-hidden flex flex-col p-6 hidden" id="tab-copilot">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-4 flex items-center space-x-2">
+          <span class="w-1 h-3.5 bg-purple-500 rounded-full"></span>
+          <span>AI Grading Copilot</span>
+        </h3>
+        
+        <!-- Chat Area -->
+        <div class="flex-1 bg-gray-950 border border-gray-850 rounded-xl p-4 overflow-y-auto custom-scrollbar flex flex-col space-y-4 mb-4 select-text" id="copilot-chat-history">
+          <!-- Welcome message -->
+          <div class="flex flex-col space-y-1">
+            <div class="text-[10px] text-purple-400 font-semibold">Assistant</div>
+            <div class="bg-purple-950/20 border border-purple-500/10 text-xs text-gray-300 px-3 py-2.5 rounded-2xl rounded-tl-none max-w-[85%] leading-relaxed">
+              Hello! I am your AI Grading Copilot. Describe the aesthetic style you want to achieve, or click one of the quick presets below to automatically adjust the sliders.
+            </div>
+          </div>
+        </div>
+
+        <!-- Preset Chips -->
+        <div class="flex flex-wrap gap-2 mb-3">
+          <button onclick="sendCopilotPreset('Moody Teal & Orange')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            🎬 Teal & Orange
+          </button>
+          <button onclick="sendCopilotPreset('Moody Cinematic')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            🎥 Cinematic Film
+          </button>
+          <button onclick="sendCopilotPreset('Golden Hour Sunset')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            🌅 Warm Sunset
+          </button>
+          <button onclick="sendCopilotPreset('Noir B&W')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            🖤 Dramatic B&W
+          </button>
+          <button onclick="sendCopilotPreset('Matrix Green')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            🟢 Matrix Green
+          </button>
+          <button onclick="sendCopilotPreset('Vibrant Pop')" class="px-2.5 py-1 bg-gray-950 border border-gray-800 hover:border-purple-500/40 text-[10px] text-gray-400 hover:text-purple-300 rounded-lg transition active:scale-95">
+            ✨ Vibrant Pop
+          </button>
+        </div>
+
+        <!-- Chat Input Bar -->
+        <div class="flex items-center space-x-2 flex-shrink-0">
+          <input type="text" id="copilot-input" onkeydown="if(event.key==='Enter') sendCopilotPrompt()" placeholder="Ask the agent (e.g. 'cinematic look')..." class="flex-1 bg-gray-950 border border-gray-850 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 focus:border-purple-500 focus:outline-none placeholder-gray-600 transition">
+          <button onclick="sendCopilotPrompt()" class="w-9 h-9 rounded-xl bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center shadow-md shadow-purple-600/10 transition active:scale-95 flex-shrink-0">
+            <svg class="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -572,24 +737,391 @@
       "hsl_red_h", "hsl_red_s", "hsl_red_l",
       "hsl_yellow_h", "hsl_yellow_s", "hsl_yellow_l",
       "hsl_green_h", "hsl_green_s", "hsl_green_l",
-      "hsl_blue_h", "hsl_blue_s", "hsl_blue_l",
       "mask_exposure", "mask_temp", "mask_vibrance"
     ];
 
-    function switchTab(tab) {
-      document.getElementById('tab-adjustments').classList.add('hidden');
-      document.getElementById('tab-logs').classList.add('hidden');
-      document.getElementById('tab-btn-adjustments').className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition';
-      document.getElementById('tab-btn-logs').className = 'flex-1 py-2 text-xs font-semibold rounded-lg text-gray-400 hover:text-gray-200 transition';
+    function switchSidebarTab(tab) {
+      if (tab === currentTab) return;
       
-      if (tab === 'adjustments') {
-        document.getElementById('tab-adjustments').classList.remove('hidden');
-        document.getElementById('tab-btn-adjustments').className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition';
-      } else {
-        document.getElementById('tab-logs').classList.remove('hidden');
-        document.getElementById('tab-btn-logs').className = 'flex-1 py-2 text-xs font-semibold rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20 transition';
+      const panels = ['adjustments', 'logs', 'copilot'];
+      for (const p of panels) {
+        const el = document.getElementById(`tab-${p}`);
+        if (el) el.classList.add('hidden');
       }
+      
+      const newPanel = document.getElementById(`tab-${tab}`);
+      if (newPanel) newPanel.classList.remove('hidden');
+      
+      const tabs = ['adjustments', 'logs', 'copilot'];
+      for (const t of tabs) {
+        const btn = document.getElementById(`btn-side-${t}`);
+        if (btn) {
+          if (t === tab) {
+            btn.className = "w-10 h-10 rounded-xl flex items-center justify-center text-purple-400 bg-purple-600/10 border border-purple-500/20 transition-all duration-200 relative";
+          } else {
+            btn.className = "w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-gray-900 transition-all duration-200 relative";
+          }
+        }
+      }
+      
+      if (tab === 'copilot') {
+        const dot = document.getElementById('side-copilot-dot');
+        if (dot) dot.classList.add('hidden');
+      }
+      
       currentTab = tab;
+    }
+
+    let isTimelineVisible = true;
+    function toggleTimeline() {
+      const panel = document.getElementById('timeline-panel');
+      const btn = document.getElementById('btn-side-timeline');
+      if (isTimelineVisible) {
+        panel.classList.add('hidden');
+        btn.className = "w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-purple-400 hover:bg-gray-900 transition-all duration-200";
+      } else {
+        panel.classList.remove('hidden');
+        btn.className = "w-10 h-10 rounded-xl flex items-center justify-center text-purple-400 bg-purple-600/10 border border-purple-500/20 transition-all duration-200";
+      }
+      isTimelineVisible = !isTimelineVisible;
+    }
+
+    let viewMode = 'split'; // or 'side-by-side'
+    function toggleViewMode() {
+      const container = document.getElementById('image-container');
+      const originalWrapper = document.getElementById('img-original-wrapper');
+      const gradedImg = document.getElementById('img-graded');
+      const originalImg = document.getElementById('img-original');
+      const splitHandle = document.getElementById('split-handle');
+      const txtMode = document.getElementById('txt-view-mode');
+      
+      if (!originalPath) return;
+
+      if (viewMode === 'split') {
+        viewMode = 'side-by-side';
+        txtMode.innerText = 'Side-by-Side';
+        
+        // Change container to flex layout
+        container.className = "relative max-w-full max-h-[500px] overflow-hidden rounded-2xl border border-gray-800 shadow-2xl p-4 bg-gray-900/30 flex items-center justify-center space-x-4";
+        
+        // Show badges
+        document.getElementById('lbl-original-badge').classList.remove('hidden');
+        document.getElementById('lbl-graded-badge').classList.remove('hidden');
+
+        // Make original wrapper relative and half-width, removing clip-path
+        originalWrapper.className = "relative w-1/2 flex-1 pointer-events-auto flex items-center justify-center";
+        originalWrapper.style.clipPath = "none";
+        originalWrapper.style.order = "1";
+        
+        // Graded wrapper relative and half-width
+        const gradedWrapper = document.getElementById('img-graded-wrapper');
+        gradedWrapper.className = "relative w-1/2 flex-1 flex items-center justify-center";
+        gradedWrapper.style.order = "2";
+
+        // Stylings for images to fit 50% width
+        gradedImg.className = "max-h-[420px] object-contain w-full rounded-xl border border-gray-800/50";
+        originalImg.className = "max-h-[420px] object-contain w-full rounded-xl border border-gray-800/50";
+        
+        // Hide split handle
+        splitHandle.classList.add('hidden');
+      } else {
+        viewMode = 'split';
+        txtMode.innerText = 'Split View';
+        
+        // Hide badges
+        document.getElementById('lbl-original-badge').classList.add('hidden');
+        document.getElementById('lbl-graded-badge').classList.add('hidden');
+
+        // Restore container style
+        container.className = "relative max-w-full max-h-[500px] overflow-hidden rounded-2xl border border-gray-800 shadow-2xl";
+        
+        // Restore original wrapper to absolute overlay
+        originalWrapper.className = "absolute inset-0 overflow-hidden pointer-events-none";
+        originalWrapper.style.order = "";
+        
+        // Restore graded wrapper style
+        const gradedWrapper = document.getElementById('img-graded-wrapper');
+        gradedWrapper.className = "w-full h-full flex items-center justify-center relative";
+        gradedWrapper.style.order = "";
+
+        // Restore image styles
+        gradedImg.className = "max-h-[500px] object-contain w-full h-auto";
+        originalImg.className = "max-h-[500px] object-contain w-full h-auto";
+        
+        // Show split handle
+        splitHandle.classList.remove('hidden');
+        
+        // Reset split position
+        updateSplitPosition(50);
+      }
+    }
+
+    // Timeline playback & scrubbing
+    let timelinePlayInterval = null;
+    let currentTimelineFrame = 0;
+    const maxTimelineFrames = 300; // 10 seconds @ 30fps
+
+    function toggleTimelinePlay() {
+      const playIcon = document.getElementById('play-icon');
+      const btn = document.getElementById('btn-timeline-play');
+      
+      if (timelinePlayInterval) {
+        clearInterval(timelinePlayInterval);
+        timelinePlayInterval = null;
+        playIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>`;
+        btn.className = "w-7 h-7 rounded-full bg-purple-600 hover:bg-purple-500 text-white flex items-center justify-center transition";
+        addLog("[Timeline] Playback paused.");
+      } else {
+        playIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"></path>`;
+        btn.className = "w-7 h-7 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition";
+        addLog("[Timeline] Playing simulation clip...");
+        
+        timelinePlayInterval = setInterval(() => {
+          currentTimelineFrame++;
+          if (currentTimelineFrame > maxTimelineFrames) {
+            currentTimelineFrame = 0;
+          }
+          updateTimelineUI();
+        }, 33);
+      }
+    }
+
+    function timelineNextFrame() {
+      currentTimelineFrame = Math.min(currentTimelineFrame + 1, maxTimelineFrames);
+      updateTimelineUI();
+    }
+
+    function timelinePrevFrame() {
+      currentTimelineFrame = Math.max(currentTimelineFrame - 1, 0);
+      updateTimelineUI();
+    }
+
+    function updateTimelineUI() {
+      const pct = (currentTimelineFrame / maxTimelineFrames) * 100;
+      const playhead = document.getElementById('timeline-playhead-line');
+      if (playhead) playhead.style.left = pct + '%';
+      
+      const totalSeconds = Math.floor(currentTimelineFrame / 30);
+      const frames = currentTimelineFrame % 30;
+      const formattedSeconds = String(totalSeconds).padStart(2, '0');
+      const formattedFrames = String(frames).padStart(2, '0');
+      
+      const timecode = document.getElementById('timeline-timecode');
+      if (timecode) timecode.innerText = `00:00:${formattedSeconds}:${formattedFrames}`;
+    }
+
+    function initTimeline() {
+      const ruler = document.getElementById('timeline-ruler');
+      if (!ruler) return;
+      ruler.innerHTML = '';
+      
+      for (let i = 0; i <= 10; i++) {
+        const tick = document.createElement('div');
+        tick.className = 'absolute h-full flex flex-col justify-between items-start';
+        tick.style.left = `${(i / 10) * 100}%`;
+        tick.innerHTML = `
+          <div class="w-[1px] h-2 bg-gray-700"></div>
+          <span class="pl-1 pb-0.5" style="font-size: 8px;">${i}s</span>
+        `;
+        ruler.appendChild(tick);
+      }
+      
+      const scrubArea = document.getElementById('timeline-scrub-area');
+      let isDraggingScrub = false;
+      
+      const handleScrub = (e) => {
+        const rect = ruler.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const x = clientX - rect.left;
+        const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+        currentTimelineFrame = Math.round((pct / 100) * maxTimelineFrames);
+        updateTimelineUI();
+      };
+      
+      scrubArea.addEventListener('mousedown', (e) => {
+        isDraggingScrub = true;
+        handleScrub(e);
+      });
+      
+      window.addEventListener('mousemove', (e) => {
+        if (isDraggingScrub) handleScrub(e);
+      });
+      
+      window.addEventListener('mouseup', () => {
+        isDraggingScrub = false;
+      });
+      
+      scrubArea.addEventListener('touchstart', (e) => {
+        isDraggingScrub = true;
+        handleScrub(e);
+      });
+      window.addEventListener('touchmove', (e) => {
+        if (isDraggingScrub) handleScrub(e);
+      });
+      window.addEventListener('touchend', () => {
+        isDraggingScrub = false;
+      });
+    }
+
+    let selectedTrack = 'adjustments';
+    function selectTimelineTrack(type) {
+      selectedTrack = type;
+      const videoClip = document.getElementById('timeline-video-clip');
+      const gradeClip = document.getElementById('timeline-grade-clip');
+      
+      if (!videoClip || !gradeClip) return;
+      
+      if (type === 'video') {
+        videoClip.className = "flex-1 h-7 bg-purple-900/30 border border-purple-500 rounded-md relative overflow-hidden flex items-center px-2 cursor-pointer transition";
+        gradeClip.className = "flex-1 h-7 bg-emerald-900/10 border border-emerald-500/10 rounded-md relative flex items-center px-2 cursor-pointer transition border-dashed";
+        document.getElementById('timeline-clip-name').innerText = "V1 Source Clip";
+      } else {
+        videoClip.className = "flex-1 h-7 bg-purple-900/10 border border-purple-500/10 rounded-md relative overflow-hidden flex items-center px-2 cursor-pointer transition";
+        gradeClip.className = "flex-1 h-7 bg-emerald-900/30 border border-emerald-500 rounded-md relative flex items-center px-2 cursor-pointer transition border-dashed";
+        document.getElementById('timeline-clip-name').innerText = "A1 Color Grade Adjustment Layer";
+        switchSidebarTab('adjustments');
+      }
+    }
+
+    function onImageLoaded(filePath) {
+      const fileName = filePath.split('/').pop() || 'Loaded Image';
+      const thumb = document.getElementById('timeline-thumbnail');
+      if (thumb) {
+        thumb.src = `/static/load?path=${encodeURIComponent(filePath)}&t=${Date.now()}`;
+        thumb.classList.remove('hidden');
+      }
+      const placeholder = document.getElementById('timeline-thumb-placeholder');
+      if (placeholder) placeholder.classList.add('hidden');
+      
+      const videoLabel = document.getElementById('timeline-video-label');
+      if (videoLabel) videoLabel.innerText = fileName;
+      
+      selectTimelineTrack('adjustments');
+    }
+
+    // AI Copilot Chat Agent Client
+    let copilotMessageCount = 0;
+    
+    function getSliderAdjustments() {
+      const adjustments = {};
+      for (const key of sliderKeys) {
+        const el = document.getElementById(key);
+        if (el) adjustments[key] = parseFloat(el.value);
+      }
+      adjustments["mask_type"] = document.getElementById('mask-select').value;
+      return adjustments;
+    }
+
+    function applyAdjustmentsToUI(adj) {
+      for (const key of sliderKeys) {
+        if (adj[key] !== undefined) {
+          const slider = document.getElementById(key);
+          if (slider) {
+            slider.value = adj[key];
+            const displayVal = document.getElementById(`val-${key}`);
+            if (displayVal) {
+              displayVal.innerText = Number(adj[key]).toFixed(2) + (key.endsWith('hue') ? '°' : '');
+            }
+          }
+        }
+      }
+      if (adj.mask_type) {
+        document.getElementById('mask-select').value = adj.mask_type;
+      }
+    }
+
+    function addChatMessage(sender, text, isLoading = false, isError = false) {
+      const chatHistory = document.getElementById('copilot-chat-history');
+      if (!chatHistory) return null;
+      
+      copilotMessageCount++;
+      const messageId = `msg-${copilotMessageCount}`;
+      
+      const wrapper = document.createElement('div');
+      wrapper.id = messageId;
+      wrapper.className = 'flex flex-col space-y-1';
+      
+      const name = document.createElement('div');
+      name.className = `text-[10px] ${sender === 'user' ? 'text-gray-400 self-end' : 'text-purple-400'} font-semibold`;
+      name.innerText = sender === 'user' ? 'You' : 'Assistant';
+      wrapper.appendChild(name);
+      
+      const bubble = document.createElement('div');
+      if (sender === 'user') {
+        bubble.className = 'bg-gray-800 border border-gray-700 text-xs text-gray-250 px-3 py-2.5 rounded-2xl rounded-tr-none max-w-[85%] self-end leading-relaxed';
+      } else {
+        bubble.className = `bg-purple-950/20 border border-purple-500/10 text-xs ${isError ? 'text-red-400 border-red-500/20' : 'text-gray-300'} px-3 py-2.5 rounded-2xl rounded-tl-none max-w-[85%] leading-relaxed`;
+      }
+      
+      if (isLoading) {
+        bubble.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <svg class="animate-spin h-3.5 w-3.5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-gray-400 italic">${text}</span>
+          </div>
+        `;
+      } else {
+        bubble.innerText = text;
+      }
+      
+      wrapper.appendChild(bubble);
+      chatHistory.appendChild(wrapper);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      
+      return messageId;
+    }
+
+    function removeChatMessage(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    function sendCopilotPreset(presetName) {
+      document.getElementById('copilot-input').value = presetName;
+      sendCopilotPrompt();
+    }
+
+    async function sendCopilotPrompt() {
+      const input = document.getElementById('copilot-input');
+      const prompt = input.value.trim();
+      if (!prompt) return;
+      
+      input.value = '';
+      addChatMessage('user', prompt);
+      
+      const loadingId = addChatMessage('agent', 'Calculating style and updating grade controls...', true);
+      
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: prompt,
+            current_adjustments: getSliderAdjustments()
+          })
+        });
+        const data = await res.json();
+        
+        removeChatMessage(loadingId);
+        
+        if (data.status === 'success') {
+          const result = data.result;
+          addChatMessage('agent', result.thought);
+          applyAdjustmentsToUI(result.adjustments);
+          
+          if (gradedPath) {
+            document.getElementById('img-graded').src = `/static/load?path=${encodeURIComponent(gradedPath)}&t=${Date.now()}`;
+          }
+        } else {
+          addChatMessage('agent', `Failed to apply adjustments: ${data.message || 'unknown error'}`, false, true);
+        }
+      } catch (err) {
+        removeChatMessage(loadingId);
+        addChatMessage('agent', `Connection error: ${err}`, false, true);
+      }
     }
 
     function addLog(text, colorClass = 'text-green-400') {
@@ -619,6 +1151,7 @@
           // Enable buttons
           document.getElementById('btn-analyze').disabled = false;
           document.getElementById('btn-export').disabled = false;
+          document.getElementById('btn-toggle-view').disabled = false;
           
           // Reset slider defaults
           resetSlidersToDefaults();
@@ -628,6 +1161,7 @@
           document.getElementById('status-text').innerText = 'Ready / Photo Loaded';
           
           addLog(`[System] Photo loaded successfully: ${originalPath}`);
+          onImageLoaded(originalPath);
         } else {
           addLog(`[Client] Upload canceled or failed: ${data.message || 'unknown error'}`, 'text-yellow-450');
         }
@@ -662,6 +1196,7 @@
           // Enable buttons
           document.getElementById('btn-analyze').disabled = false;
           document.getElementById('btn-export').disabled = false;
+          document.getElementById('btn-toggle-view').disabled = false;
           
           // Reset slider defaults
           resetSlidersToDefaults();
@@ -671,6 +1206,7 @@
           document.getElementById('status-text').innerText = 'Ready / Photo Loaded';
           
           addLog(`[System] Photo uploaded and loaded successfully: ${originalPath}`);
+          onImageLoaded(originalPath);
         } else {
           addLog(`[Client] Upload failed: ${data.message || 'unknown error'}`, 'text-yellow-450');
         }
@@ -844,6 +1380,7 @@
     const originalWrapper = document.getElementById('img-original-wrapper');
 
     function updateSplitPosition(pct) {
+      if (viewMode === 'side-by-side') return;
       pct = Math.max(0, Math.min(100, pct));
       splitHandle.style.left = `${pct}%`;
       originalWrapper.style.clipPath = `polygon(0 0, ${pct}% 0, ${pct}% 100%, 0 100%)`;
@@ -901,6 +1438,9 @@
         uploadFileDirectly(e.dataTransfer.files[0]);
       }
     });
+
+    // Initialize timeline view on load
+    initTimeline();
   </script>
 </body>
 </html>
