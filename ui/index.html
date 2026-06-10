@@ -288,6 +288,32 @@
           </button>
         </div>
 
+        <!-- Section: Quick Presets -->
+        <div class="bg-gray-950 p-4 rounded-xl border border-gray-800/80">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3 flex items-center space-x-2">
+            <span class="w-1 h-3.5 bg-purple-500 rounded-full"></span>
+            <span>Quick Presets</span>
+          </h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="applyPreset('cinematic')" class="px-2.5 py-2 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white text-[11px] font-medium rounded border border-gray-800 hover:border-purple-500/30 transition text-left pl-3 flex items-center space-x-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+              <span>Cinematic Teal</span>
+            </button>
+            <button onclick="applyPreset('vintage')" class="px-2.5 py-2 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white text-[11px] font-medium rounded border border-gray-800 hover:border-purple-500/30 transition text-left pl-3 flex items-center space-x-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-yellow-600"></span>
+              <span>Vintage Warm</span>
+            </button>
+            <button onclick="applyPreset('mono')" class="px-2.5 py-2 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white text-[11px] font-medium rounded border border-gray-800 hover:border-purple-500/30 transition text-left pl-3 flex items-center space-x-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+              <span>B&W High Contrast</span>
+            </button>
+            <button onclick="applyPreset('cyberpunk')" class="px-2.5 py-2 bg-gray-900 hover:bg-gray-800 text-gray-300 hover:text-white text-[11px] font-medium rounded border border-gray-800 hover:border-purple-500/30 transition text-left pl-3 flex items-center space-x-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+              <span>Cyberpunk Neon</span>
+            </button>
+          </div>
+        </div>
+
         <!-- Section: Light -->
         <div>
           <h3 class="text-xs font-bold uppercase tracking-wider text-blue-400 mb-4 flex items-center space-x-2">
@@ -1248,6 +1274,60 @@
       resetSlidersToDefaults();
       triggerLiveGrade();
       addLog("[Client] Reset all adjustments to defaults.");
+    }
+
+    function applyPreset(name) {
+      if (!originalPath) {
+        addLog("[Client] Please load an image before applying a preset.", "text-yellow-450");
+        return;
+      }
+      
+      resetSlidersToDefaults();
+      
+      const adjustments = {};
+      if (name === 'cinematic') {
+        adjustments.temp = -0.15;
+        adjustments.tint = 0.05;
+        adjustments.highlights_hue = 30;
+        adjustments.highlights_sat = 0.15;
+        adjustments.shadows_hue = 210;
+        adjustments.shadows_sat = 0.18;
+        adjustments.vibrance = 0.15;
+        adjustments.contrast = 1.1;
+      } else if (name === 'vintage') {
+        adjustments.temp = 0.25;
+        adjustments.tint = 0.10;
+        adjustments.contrast = 0.90;
+        adjustments.blacks = 0.15;
+        adjustments.vibrance = -0.10;
+        adjustments.highlights_hue = 45;
+        adjustments.highlights_sat = 0.10;
+      } else if (name === 'mono') {
+        adjustments.saturation = 0;
+        adjustments.contrast = 1.35;
+        adjustments.highlights = 0.15;
+        adjustments.shadows = -0.15;
+      } else if (name === 'cyberpunk') {
+        adjustments.temp = -0.30;
+        adjustments.tint = 0.25;
+        adjustments.vibrance = 0.25;
+        adjustments.contrast = 1.15;
+        adjustments.shadows_hue = 240;
+        adjustments.shadows_sat = 0.20;
+        adjustments.highlights_hue = 320;
+        adjustments.highlights_sat = 0.25;
+      }
+      
+      for (const [key, value] of Object.entries(adjustments)) {
+        const slider = document.getElementById(key);
+        if (slider) {
+          slider.value = value;
+          document.getElementById(`val-${key}`).innerText = Number(value).toFixed(2) + (key.endsWith('hue') ? '°' : '');
+        }
+      }
+      
+      triggerLiveGrade();
+      addLog(`[Client] Applied preset: ${name}`);
     }
 
     function updateSlider(key) {
